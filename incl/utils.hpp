@@ -1,0 +1,17 @@
+#pragma once
+
+#include <cstdint>
+#include <exception>
+#include <string>
+#include <arpa/inet.h>
+
+class IRCException : public std::exception
+{
+	private:
+		const char	*_message;
+	public:
+		IRCException(const char *msg);
+		const char* what() const noexcept;
+};
+
+uint16_t	convert_to_port(const char *str);
