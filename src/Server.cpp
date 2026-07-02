@@ -51,12 +51,18 @@ void	Server::wait_incoming(int epollfd, int socket_fd, epoll_event ev)
 
 			if (client_fd < 0)
 				throw IRCException("accept() syscall failed");
-			ev.events = EPOLLIN | EPOLLET;
+			ev.events = EPOLLIN | EPOLLET | EPOLLHUP;
 			ev.data.fd = client_fd;
 			std::cout << "registering fd: " << client_fd << std::endl;
 			if (epoll_ctl(epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1)
 				throw IRCException("epoll_ctl() syscall failed");
 		}
+		if (events[i].events & EPOLLHUP)
+		{
+			std::cout << "Connection closed with fd: " << events[i].data.fd << std::endl;
+			close(events[i].data.fd);
+		}
+		std::cout << "over\n" << std::endl;
 	}
 }
 
