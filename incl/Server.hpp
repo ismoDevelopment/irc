@@ -17,7 +17,7 @@ class Server {
 		socklen_t	_addrLen;
 		uint16_t	_port;
 		const char	*_password;
-		void	wait_incoming(int epollfd, int socket_fd, epoll_event ev);
+		void	wait_incoming(int epollfd, int socket_fd);
 	public:
 		Server(uint16_t port, const char *password);
 

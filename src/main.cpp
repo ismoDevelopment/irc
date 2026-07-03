@@ -11,7 +11,8 @@ int	main(int argc, char *argv[])
 		Server server(convert_to_port(argv[1]), argv[2]);
 
 		server.start();
-	} catch (const std::exception &ex)
+	}
+	catch (const std::exception &ex)
 	{
 		std::cout << ex.what() << std::endl;
 		if (errno > 0)
