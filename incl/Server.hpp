@@ -19,11 +19,7 @@ class Server {
 		const char	*_password;
 		void	wait_incoming(int epollfd, int socket_fd, epoll_event ev);
 	public:
-		Server();
 		Server(uint16_t port, const char *password);
-		Server(const Server	&other);
-		~Server();
 
-		Server	operator=(const Server &other);
 		void	start();
 };
