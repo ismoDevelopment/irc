@@ -1,6 +1,11 @@
 #include "Server.hpp"
 #include "utils.hpp"
 
+/*
+	https://modern.ircdocs.horse/#numeric-replies
+
+*/
+
 Server::Server(uint16_t port, const char *password) : _port(port), _password(password)
 {
 	_serverAddr.sin_family = AF_INET;
@@ -25,6 +30,12 @@ void	Server::wait_incoming(int epollfd, int socket_fd)
 
 			if (client_fd < 0)
 				throw IRCException("accept() syscall failed");
+
+			// int	flags = fcntl(client_fd, F_GETFL, 0);
+
+			// if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+			// 	throw IRCException("fcntl() syscall failed");
+
 			epoll_event	ev{};
 
 			ev.events = EPOLLIN;
@@ -35,23 +46,28 @@ void	Server::wait_incoming(int epollfd, int socket_fd)
 		}
 		else if (events[i].events & EPOLLIN)
 		{
-			std::cout << "[" << events[i].data.fd << "]" << " ready to be read" << std::endl;
+			// std::cout << "[" << events[i].data.fd << "]" << " ready to be read" << std::endl;
 
-			size_t	n{};
-			char	buffer[100];
+			char	buffer[1024];
+			ssize_t	n = recv(events[i].data.fd, &buffer, 1024, 0);
 
-			while ((n = read(events[i].data.fd, &buffer, 100)) > 0)
+			while (n > 0)
 			{
 				std::cout << buffer;
+				n = recv(events[i].data.fd, &buffer, 1024, 0);
 			}
+			if (n == -1 && errno == EAGAIN)
+			{
+				continue ;
+			}
+			close(events[i].data.fd);
 			std::cout << std::endl;
 		}
-		else if (events[i].events & EPOLLHUP)
+		else if (events[i].events & (EPOLLHUP | EPOLLERR))
 		{
-			std::cout << "[" << events[i].data.fd << "]" << " connection closed" << std::endl;
 			close(events[i].data.fd);
+			continue;
 		}
-		std::cout << "over\n" << std::endl;
 	}
 }
 

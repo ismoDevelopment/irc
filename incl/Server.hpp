@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <sys/epoll.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
