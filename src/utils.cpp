@@ -17,3 +17,11 @@ uint16_t	convert_to_port(const char *str)
 		throw IRCException("Port out of range");
 	return (htons((uint16_t) port));
 }
+
+void	set_nonblock(int fd)
+{
+	int	flags = fcntl(fd, F_GETFL, 0);
+
+	if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0)
+		throw IRCException("fcntl() syscall failed");
+}
