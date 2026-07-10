@@ -1,5 +1,6 @@
 #pragma once
 
+#include <signal.h>
 #include <cstdint>
 #include <sys/epoll.h>
 #include <fcntl.h>
@@ -17,15 +18,20 @@
 
 class Server {
 	private:
+		int								_epollfd;
+		int								_socketfd;
 		sockaddr_in						_serverAddr;
 		socklen_t						_addrLen;
 		uint16_t						_port;
 		std::string_view				_password;
 		std::unordered_map<int, Client>	_clients;
-		void	wait_incoming(int epollfd, int socket_fd);
+		void	wait_incoming(void);
+		static bool							_interrupted;
 
 	public:
 		Server(uint16_t port, std::string_view password);
 
-		void	start();
+		void	start(void);
+		void	stop(const char *message);
+		static void	sigint_handler(int);
 };

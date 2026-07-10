@@ -16,9 +16,6 @@ void	Client::process_buffer()
 
 	while (delim_index != std::string::npos)
 	{
-		/*
-			START PARSING
-		*/
 		std::string	command = _buffer.substr(0, delim_index);
 
 		if (command.compare("CAP LS 302") == 0)
