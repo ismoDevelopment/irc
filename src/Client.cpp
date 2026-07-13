@@ -20,13 +20,11 @@ void	Client::process_buffer()
 
 		if (command.compare("CAP LS 302") == 0)
 		{
-			std::string	message = "CAP * LS :\r\n";
-			if (send(_fd, message.c_str(), message.size(), 0) < 0)
+			if (send(_fd, ERR_.c_str(), message.size(), 0) < 0)
 				throw IRCException("send syscall failed");
 		}
 		if (command.compare("JOIN :") == 0)
 		{
-			std::string	message = ":localhost 451 * :You have not registered\r\n";
 			if (send(_fd, message.c_str(), message.size(), 0) < 0)
 				throw IRCException("send syscall failed");
 		}

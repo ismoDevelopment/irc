@@ -25,7 +25,6 @@ void	Server::wait_incoming(void)
 	if (_interrupted)
 	{
 		this->stop(nullptr);
-		exit(0);
 	}
 	if (nfds < 0)
 		this->stop("epoll_wait syscall failed");
@@ -125,12 +124,12 @@ void	Server::stop(const char *message)
 		epoll_ctl(it.first, EPOLL_CTL_DEL, it.first, nullptr);
 		close(it.first);
 	}
-	if (_epollfd)
+	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);
 		close(_epollfd);
 	}
-	if (_socketfd)
+	if (_socketfd > 0)
 		close(_socketfd);
 
 	if (message)
