@@ -79,8 +79,7 @@ void	Server::wait_incoming(void)
 			if (n < 0 && errno != EAGAIN)
 			{
 				std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
-				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-				close(events[i].data.fd);
+				Server::stop(nullptr);
 				std::cout << std::endl;
 			}
 			client.process_buffer();

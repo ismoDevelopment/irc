@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <string_view>
 #include "Client.hpp"
-#include "client_errors.hpp"
+#include "client_replies.hpp"
 
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
