@@ -107,8 +107,6 @@ void	Server::start()
 	ev.events = EPOLLIN | EPOLLET;
 	ev.data.fd = _socketfd;
 
-	(void)_password;
-
 	if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &ev) < 0)
 		this->stop("epoll_ctl syscall failed");
 
