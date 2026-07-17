@@ -4,6 +4,7 @@
 #include <exception>
 #include <string>
 #include <arpa/inet.h>
+#include <fcntl.h>
 
 class IRCException : public std::exception
 {
@@ -15,3 +16,4 @@ class IRCException : public std::exception
 };
 
 uint16_t	convert_to_port(const char *str);
+void		set_nonblock(int fd);

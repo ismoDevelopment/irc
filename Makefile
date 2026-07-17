@@ -2,8 +2,8 @@ NAME = irc_server
 TMP_DIR = tmp
 SRC_DIR = src
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -MMD -Iincl
-SRCS = main.cpp Server.cpp utils.cpp
+CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -MMD -Iincl
+SRCS = main.cpp Server.cpp Client.cpp utils.cpp
 OBJS = $(addprefix $(TMP_DIR)/,$(SRCS:.cpp=.o))
 DEPS = $(OBJS:.o=.d)
 
