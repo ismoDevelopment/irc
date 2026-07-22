@@ -10,6 +10,8 @@
 #include "Client.hpp"
 #include "Commands.hpp"
 
+static const std::string SERVER_PASSWORD = "testpass"; // usa esto con `nc`: PASS testpass
+
 static ParsedCommand parseLine(const std::string& line)
 {
     ParsedCommand cmd;
@@ -38,6 +40,26 @@ static ParsedCommand parseLine(const std::string& line)
     return cmd;
 }
 
+// ---- ÚNICO SITIO QUE TOCAS AL AÑADIR UN COMANDO NUEVO ----
+static void dispatch(Client& client, const ParsedCommand& cmd,
+                      std::map<std::string, Client*>& clientsByNick)
+{
+    if (cmd.command == "PASS")
+        handlePass(client, cmd, SERVER_PASSWORD);
+    else if (cmd.command == "NICK")
+    {
+        handleNick(client, cmd);
+        clientsByNick[client.getNickname()] = &client; // registra/actualiza el nick para poder buscarlo luego
+    }
+    else if (cmd.command == "USER")
+        handleUser(client, cmd);
+    else if (cmd.command == "PRIVMSG")
+        handlePrivmsg(client, cmd, clientsByNick);
+    // else if (cmd.command == "JOIN") handleJoin(client, cmd, ...);   <- así se añade el siguiente
+    checkRegistration(client); // se comprueba después de CUALQUIER comando de registro
+}
+// -----------------------------------------------------------
+
 int main()
 {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -55,11 +77,11 @@ int main()
     pollfd listener; listener.fd = server_fd; listener.events = POLLIN;
     fds.push_back(listener);
 
-    std::map<int, Client>       clientsByFd;
-    std::map<int, std::string>  inputBuffers;
+    std::map<int, Client>          clientsByFd;
+    std::map<int, std::string>     inputBuffers;
     std::map<std::string, Client*> clientsByNick;
 
-    std::cout << "Test server en 6667..." << std::endl;
+    std::cout << "Test server en 6667 (password: " << SERVER_PASSWORD << ")..." << std::endl;
 
     while (true)
     {
@@ -106,15 +128,7 @@ int main()
                 ParsedCommand cmd = parseLine(line);
                 Client& client = clientsByFd[fds[i].fd];
 
-                if (cmd.command == "NICK")
-                {
-                    handleNick(client, cmd);
-                    client.setPassTrue();
-                    client.setUsername("test");
-                    clientsByNick[client.getNickname()] = &client;
-                }
-                else if (cmd.command == "PRIVMSG")
-                    handlePrivmsg(client, cmd, clientsByNick);
+                dispatch(client, cmd, clientsByNick);
 
                 for (std::map<int, Client>::iterator it = clientsByFd.begin(); it != clientsByFd.end(); ++it)
                 {
