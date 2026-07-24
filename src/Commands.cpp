@@ -90,3 +90,78 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 
 	it->second->queueOutput(":" + sender.getNickname() + " PRIVMSG " + target + " :" + message + "\r\n");
 }
+
+void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+{
+	if (!client.isRegistered())
+	{
+		client.queueOutput("451 :You have not registered\r\n");
+		return;
+	}
+
+	if (cmd.params.empty())
+	{
+		client.queueOutput("461 JOIN :Not enough parameters\r\n");
+		return;
+	}
+
+	const std::string &channelName = cmd.params[0];
+
+	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
+	Channel *channel;
+	bool isNewChannel = (it == channelsByName.end());
+
+	if (isNewChannel)
+	{
+		channel = new Channel(channelName);
+		channelsByName[channelName] = channel;
+	}
+	else
+		channel = it->second;
+
+	if (channel->hasMember(&client))
+	{
+		client.queueOutput("443 " + client.getNickname() + " " + channelName + " :is already on channel\r\n");
+		return;
+	}
+
+	channel->addMember(&client);
+	if (isNewChannel)
+		channel->addOperator(&client);
+	
+	client.queueOutput(":" + client.getNickname() + " JOIN " + channelName + "\r\n");
+}
+
+void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+{
+	if (!client.isRegistered())
+	{
+		client.queueOutput("451 :You have not registered\r\n");
+		return;
+	}
+
+	if (cmd.params.empty())
+	{
+		client.queueOutput("461 PART :Not enough parameters\r\n");
+		return;
+	}
+
+	const std::string &channelName = cmd.params[0];
+	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
+
+	if (it == channelsByName.end() || !it->second->hasMember(&client))
+	{
+		client.queueOutput("442 " + channelName + " :You are not on that channel\r\n");
+		return;
+	}
+	
+	Channel *channel = it->second;
+	channel->removeMember(&client);
+	client.queueOutput(":" + client.getNickname() + " PART " + channelName + "\r\n");
+
+	if (channel->isEmpty())
+	{
+		delete channel;
+		channelsByName.erase(it);
+	}
+}

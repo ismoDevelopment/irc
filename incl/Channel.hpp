@@ -12,11 +12,11 @@ class Channel
 		const std::string &getName() const;
 
 		//clients
-		void addClient(Client *client);
-		void removeClient(Client *client);
-		bool hasClient(Client *client) const;
+		void addMember(Client *client);
+		void removeMember(Client *client);
+		bool hasMember(Client *client) const;
 		bool isEmpty() const;
-		size_t getClientCount() const;
+		size_t getMemberCount() const;
 		void broadcastMessage(const std::string &message, Client *excludeClient = nullptr) const;
 
 		//operators
@@ -53,7 +53,7 @@ class Channel
 	private:
 		std::string _name;
 		std::string _topic;
-		std::set<Client *> _clients;
+		std::set<Client *> _members;
 		std::set<Client *> _operators;
 		std::set<Client *> _invited;
 
