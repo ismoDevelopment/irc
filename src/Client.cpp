@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client() : _hasPass(false), _hasNick(false), _hasUser(false)
+Client::Client() : _hasPass(false), _hasNick(false), _hasUser(false), _welcomedSent(false)
 {
 
 }
@@ -30,6 +30,16 @@ void Client::setUsername(const std::string &user)
 void Client::setPassTrue()
 {
 	_hasPass = true;
+}
+
+bool Client::hasWelcomed() const
+{
+	return _welcomedSent;
+}
+
+void Client::setWelcomed()
+{
+	_welcomedSent = true;
 }
 
 void Client::queueOutput(const std::string &msg)

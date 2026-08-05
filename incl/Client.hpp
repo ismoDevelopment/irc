@@ -12,6 +12,8 @@ class Client
 		void setNickname(const std::string &nick);
 		void setUsername(const std::string &user);
 		void setPassTrue();
+		bool hasWelcomed() const;
+		void setWelcomed();
 
 		//for keep the message and test it here
         void queueOutput(const std::string& msg);
@@ -24,5 +26,6 @@ class Client
 		bool		_hasPass;
 		bool		_hasNick;
 		bool		_hasUser;
+		bool		_welcomedSent;
 		std::string	_outbox; //for test the buffer output
 };
