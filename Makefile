@@ -3,7 +3,7 @@ TMP_DIR = tmp
 SRC_DIR = src
 CXX = c++
 CXXFLAGS = -Wall -Wextra -Werror -std=c++17 -MMD -Iincl
-SRCS = main.cpp Server.cpp Client.cpp utils.cpp
+SRCS = main.cpp Server.cpp Client.cpp Commands.cpp Channel.cpp utils.cpp
 OBJS = $(addprefix $(TMP_DIR)/,$(SRCS:.cpp=.o))
 DEPS = $(OBJS:.o=.d)
 
