@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include "ParsedCommand.hpp"
 #include "Channel.hpp"
+#include "client_replies.hpp"
 
 void checkRegistration(Client &client);
 void handleNick(Client &client, const ParsedCommand &cmd,

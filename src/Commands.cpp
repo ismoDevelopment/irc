@@ -13,7 +13,7 @@ void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, 
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client("431 :No Nickname\r\n");
+		client.write_to_client(ERR_NONICKNAMEGIVEN(client.get_nickname()));
 		return;
 	}
 
@@ -22,7 +22,7 @@ void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, 
 	std::map<std::string, Client*>::iterator it = clientsByNick.find(newNick);
 	if (it != clientsByNick.end() && it->second != &client)
 	{
-		client.write_to_client("433 " + newNick + " :Nickname is already in use\r\n");
+		client.write_to_client(ERR_NICKNAMEINUSE(client.get_nickname(), newNick));
 		return;
 	}
 
@@ -40,19 +40,19 @@ void handlePass(Client &client, const ParsedCommand &cmd, const std::string &ser
 {
 	if (client.is_registered())
 	{
-		client.write_to_client("462 :You may not reregister\r\n");
+		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 PASS :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PASS"));
 		return;
 	}
 
 	if (cmd.params[0] != serverPass)
 	{
-		client.write_to_client("464 :Password incorrect\r\n");
+		client.write_to_client(ERR_PASSWDMISMATCH(client.get_nickname()));
 		return;
 	}
 
@@ -64,13 +64,13 @@ void handleUser(Client &client, const ParsedCommand &cmd)
 {
 	if (client.is_registered())
 	{
-		client.write_to_client("462 :You may not reregister\r\n");
+		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 4)
 	{
-		client.write_to_client("461 USER :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "USER"));
 		return;
 	}
 
@@ -82,13 +82,13 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 {
 	if (!sender.is_registered())
 	{
-		sender.write_to_client("451 :You have not resgistered\r\n");
+		sender.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		sender.write_to_client("461 PRIVMSG :Not enough parameters\r\n");
+		sender.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PRIVMSG"));
 		return;
 	}
 
@@ -100,14 +100,14 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 		std::map<std::string, Channel*>::iterator it = channelsByName.find(target);
 		if (it == channelsByName.end())
 		{
-			sender.write_to_client("403 " + target + " :No such channel\r\n");
+			sender.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), target));
 			return;
 		}
 
 		Channel *channel = it->second;
 		if (!channel->hasMember(&sender))
 		{
-			sender.write_to_client("404 " + target + " :Cannot send to channel\r\n");
+			sender.write_to_client(ERR_CANNOTSENDTOCHAN(client.get_nickname(), target));
 			return;
 		}
 		channel->broadcastMessage(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
@@ -117,7 +117,7 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 		std::map<std::string, Client*>::iterator it = clientsByNick.find(target);
 		if (it == clientsByNick.end())
 		{
-			sender.write_to_client("401 " + target + " :No such nick\r\n");
+			sender.write_to_client(ERR_NOSUCHNICK(client.get_nickname(), target));
 			return;
 		}
 
@@ -163,13 +163,13 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client("451 :You have not registered\r\n");
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 JOIN :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "JOIN"));
 		return;
 	}
 
@@ -187,6 +187,7 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	else
 		channel = it->second;
 
+	// this should not be a reply for JOIN command
 	if (channel->hasMember(&client))
 	{
 		client.write_to_client("443 " + client.get_nickname() + " " + channelName + " :is already on channel\r\n");
@@ -195,7 +196,7 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 	if (channel->isInviteOnly() && !channel->isInvited(&client))
 	{
-		client.write_to_client("473 " + channelName + " :Cannot join channel (+i)\r\n");
+		client.write_to_client(ERR_INVITEONLYCHAN(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -207,14 +208,14 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 		if (pass != channel->getPassword())
 		{
-			client.write_to_client("475 " + channelName + " :Cannot join channel (+k)\r\n");
+			client.write_to_client(ERR_BADCHANNELKEY(client.get_nickname(), channelName));
 			return;
 		}
 	}
 
 	if (channel->hasUserLimit() && channel->getMemberCount() >= channel->getUserLimit())
 	{
-		client.write_to_client("471 " + channelName + " :Cannot join channel (+l)\r\n");
+		client.write_to_client(ERR_CHANNELISFULL(client.get_nickname(), ));
 		return;
 	}
 
@@ -229,13 +230,13 @@ void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client("451 :You have not registered\r\n");
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 PART :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PART"));
 		return;
 	}
 
@@ -244,7 +245,7 @@ void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 	if (it == channelsByName.end() || !it->second->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You are not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -269,7 +270,7 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 TOPIC :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "TOPIC"));
 		return;
 	}
 
@@ -278,7 +279,7 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
 	if (it == channelsByName.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -286,7 +287,7 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -301,7 +302,7 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 	if (channel->isTopicLocked() && !channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -314,13 +315,13 @@ void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client("451 :You have not registered\r\n");
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client("461 INVITE :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "INVITE"));
 		return;
 	}
 
@@ -330,34 +331,34 @@ void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string
 	std::map<std::string, Channel*>::iterator itChannel = channelsByName.find(channelName);
 	if (itChannel == channelsByName.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = itChannel->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(client.get_nickname(), channelName));
 		return;
 	}
 
 	std::map<std::string, Client*>::iterator itClient = clientsByNick.find(targetNick);
 	if (itClient == clientsByNick.end())
 	{
-		client.write_to_client("401 " + targetNick + " :No such nick\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), targetNick));
 		return;
 	}
 
 	Client *targetClient = itClient->second;
 	if (channel->hasMember(targetClient))
 	{
-		client.write_to_client("443 " + targetNick + " " + channelName + " :is already on channel\r\n");
+		client.write_to_client(ERR_USERONCHANNEL(client.get_nickname, targetClient, channelName));
 		return;
 	}
 
@@ -371,13 +372,13 @@ void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client("451 :You have not registered\r\n");
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client("461 KICK :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "KICK"));
 		return;
 	}
 
@@ -387,27 +388,27 @@ void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
 	if (chIt == channelsByName.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(client.get_nickname(), channelName));
 		return;
 	}
 
 	std::map<std::string, Client*>::iterator userIt = clientsByNick.find(targetNick);
 	if (userIt == clientsByNick.end())
 	{
-		client.write_to_client("401 " + targetNick + " :No such nick\r\n");
+		client.write_to_client(ERR_NOSUCHNICK(client.get_nickname(), targetNick));
 		return;
 	}
 
@@ -438,13 +439,13 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client("451 :You have not registered\r\n");
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 MODE :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
 		return;
 	}
 
@@ -453,14 +454,14 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
 	if (chIt == channelsByName.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), target));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -522,7 +523,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 				{
 					if (index >= cmd.params.size())
 					{
-						client.write_to_client("461 MODE :Not enough parameters\r\n");
+						client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
 						break;
 					}
 					channel->setPassword(cmd.params[index]);
@@ -542,7 +543,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 			{
 				if (index >= cmd.params.size())
 				{
-					client.write_to_client("461 MODE :Not enough parameters\r\n");
+					client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
 					break;
 				}
 				const std::string &targetNick = cmd.params[index];
@@ -576,7 +577,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 				{
 					if (index >= cmd.params.size())
 					{
-						client.write_to_client("461 MODE :Not enough parameters\r\n");
+						client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
 						break;
 					}
 
@@ -598,7 +599,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 			}
 			default:
 			{
-				client.write_to_client("472 " + std::string(1, c) + " :unknown mode char\r\n");
+				client.write_to_client(ERR_UNKNOWNMODE(client.get_nickname(), std::string(1, c)));
 				break;
 			}
 		}
