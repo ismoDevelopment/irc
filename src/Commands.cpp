@@ -82,13 +82,13 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 {
 	if (!sender.is_registered())
 	{
-		sender.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		sender.write_to_client(ERR_NOTREGISTERED(sender.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		sender.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PRIVMSG"));
+		sender.write_to_client(ERR_NEEDMOREPARAMS(sender.get_nickname(), "PRIVMSG"));
 		return;
 	}
 
@@ -100,14 +100,14 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 		std::map<std::string, Channel*>::iterator it = channelsByName.find(target);
 		if (it == channelsByName.end())
 		{
-			sender.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), target));
+			sender.write_to_client(ERR_NOSUCHCHANNEL(sender.get_nickname(), target));
 			return;
 		}
 
 		Channel *channel = it->second;
 		if (!channel->hasMember(&sender))
 		{
-			sender.write_to_client(ERR_CANNOTSENDTOCHAN(client.get_nickname(), target));
+			sender.write_to_client(ERR_CANNOTSENDTOCHAN(sender.get_nickname(), target));
 			return;
 		}
 		channel->broadcastMessage(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
@@ -117,7 +117,7 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 		std::map<std::string, Client*>::iterator it = clientsByNick.find(target);
 		if (it == clientsByNick.end())
 		{
-			sender.write_to_client(ERR_NOSUCHNICK(client.get_nickname(), target));
+			sender.write_to_client(ERR_NOSUCHNICK(sender.get_nickname(), target));
 			return;
 		}
 
@@ -215,7 +215,7 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 	if (channel->hasUserLimit() && channel->getMemberCount() >= channel->getUserLimit())
 	{
-		client.write_to_client(ERR_CHANNELISFULL(client.get_nickname(), ));
+		client.write_to_client(ERR_CHANNELISFULL(client.get_nickname(), channelName));
 		return;
 	}
 
@@ -358,7 +358,7 @@ void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string
 	Client *targetClient = itClient->second;
 	if (channel->hasMember(targetClient))
 	{
-		client.write_to_client(ERR_USERONCHANNEL(client.get_nickname, targetClient, channelName));
+		client.write_to_client(ERR_USERONCHANNEL(client.get_nickname(), targetNick, channelName));
 		return;
 	}
 
@@ -454,7 +454,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
 	if (chIt == channelsByName.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), target));
+		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
 		return;
 	}
 
