@@ -34,7 +34,7 @@ void	Server::wait_incoming(void)
 		if (events[i].data.fd == _socketfd)
 		{
 			int	client_fd = accept(_socketfd, (struct sockaddr*) &_serverAddr, &_addrLen);
-			Client	new_client(client_fd);
+			Client	new_client(client_fd, _password);
 
 			if (client_fd < 0)
 				this->stop("accept() syscall failed");

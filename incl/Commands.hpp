@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <sstream>
 #include <cstdlib>
 #include "Client.hpp"
 #include "ParsedCommand.hpp"

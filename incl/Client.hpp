@@ -24,6 +24,7 @@ class Client {
 		std::string	_host;
 		std::string _nickname;
 		std::string _username;
+		std::string _serverPassword;
 	public:
 		Client(int fd);
 		void	set_nickname(std::string nickname);
