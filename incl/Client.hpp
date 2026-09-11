@@ -12,6 +12,7 @@
 #include <string_view>
 #include "utils.hpp"
 #include "client_replies.hpp"
+#include "Server.hpp"
 
 class Client {
 	private:
@@ -32,10 +33,13 @@ class Client {
 		void	set_password(void);
 		bool 	hasWelcomed() const;
 		void 	setWelcomed(void);
-		const 	std::string&	get_nickname(void);
-		const 	std::string&	get_username(void);
+		std::string&	get_nickname(void) const;
+		std::string&	get_username(void) const;
+		std::string&	get_fd(void) const;
 		bool	is_registered() const;
 		void	add_buffer(std::string received);
 		void	process_buffer(void);
 		void	write_to_client(std::string	message);
+		std::string	get_server_password(void) const;
+		std::string	get_message(void);
 };

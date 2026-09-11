@@ -11,22 +11,32 @@
 #include <iostream>
 #include <unordered_map>
 #include <string_view>
+#include <stdexcept>
+#include <sstream>
+#include <list>
+#include "Channel.hpp"
 #include "Client.hpp"
 #include "client_replies.hpp"
+#include "ParsedCommand.hpp"
 
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
 
+typedef std::list<Client> t_clients;
 class Server {
 	private:
-		int								_epollfd;
-		int								_socketfd;
-		sockaddr_in						_serverAddr;
-		socklen_t						_addrLen;
-		uint16_t						_port;
-		std::string_view				_password;
-		std::unordered_map<int, Client>	_clients;
+		int														_epollfd;
+		int														_socketfd;
+		sockaddr_in												_serverAddr;
+		socklen_t												_addrLen;
+		uint16_t												_port;
+		std::string_view										_password;
+		t_clients												_clients;
+		std::unordered_map<int, t_clients::iterator>			_clients_by_fd;
+		std::unordered_map<std::string, t_clients::iterator>	_clients_by_nickname;
+		std::unordered_map<std::string, t_clients::iterator>	_clients_by_username;
 		void	wait_incoming(void);
+		void	process_buffer(int client_fd);
 		static bool							_interrupted;
 
 	public:
@@ -34,5 +44,7 @@ class Server {
 
 		void	start(void);
 		void	stop(const char *message);
+		void	add_client(Client &client);
+		void	erase_client(int fd);
 		static void	sigint_handler(int);
 };
