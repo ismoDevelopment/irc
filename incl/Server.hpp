@@ -9,7 +9,8 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
-#include <unordered_map>
+#include <map>
+#include <map>
 #include <string_view>
 #include <stdexcept>
 #include <sstream>
@@ -32,9 +33,9 @@ class Server {
 		uint16_t												_port;
 		std::string_view										_password;
 		t_clients												_clients;
-		std::unordered_map<int, t_clients::iterator>			_clients_by_fd;
-		std::unordered_map<std::string, t_clients::iterator>	_clients_by_nickname;
-		std::unordered_map<std::string, t_clients::iterator>	_clients_by_username;
+		std::map<int, t_clients::iterator>			_clients_by_fd;
+		std::map<std::string, t_clients::iterator>	_clients_by_nickname;
+		std::map<std::string, Channel>				_channels_by_name;
 		void	wait_incoming(void);
 		void	process_buffer(int client_fd);
 		static bool							_interrupted;

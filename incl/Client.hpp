@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
-#include <unordered_map>
+#include <map>
 #include <string_view>
 #include "utils.hpp"
 #include "client_replies.hpp"
@@ -25,7 +25,6 @@ class Client {
 		std::string	_host;
 		std::string _nickname;
 		std::string _username;
-		std::string _serverPassword;
 	public:
 		Client(int fd);
 		void	set_nickname(std::string nickname);
@@ -35,11 +34,9 @@ class Client {
 		void 	setWelcomed(void);
 		std::string&	get_nickname(void) const;
 		std::string&	get_username(void) const;
-		std::string&	get_fd(void) const;
+		int		get_fd(void) const;
 		bool	is_registered() const;
 		void	add_buffer(std::string received);
-		void	process_buffer(void);
 		void	write_to_client(std::string	message);
-		std::string	get_server_password(void) const;
 		std::string	get_message(void);
 };

@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "utils.hpp"
+#include "Commands.hpp"
 
 bool Server::_interrupted = false;
 
@@ -48,11 +49,11 @@ static ParsedCommand parseLine(const std::string& line)
 // ---- ÚNICO SITIO QUE TOCAS AL AÑADIR UN COMANDO NUEVO ----
 static void dispatch(Client& client,
                       const ParsedCommand& cmd,
-                      std::unordered_map<std::string, Client*>& clientsByNick,
-                      std::unordered_map<std::string, Channel*>& channelsByName)
+                      std::map<std::string, Client*>& clientsByNick,
+                      std::map<std::string, Channel*>& channelsByName, std::string server_password)
 {
     if (cmd.command == "PASS")
-        handlePass(client, cmd, client.server.get_password());
+        handlePass(client, cmd, server_password);
     else if (cmd.command == "NICK")
         handleNick(client, cmd, clientsByNick);
     else if (cmd.command == "USER")
@@ -88,19 +89,16 @@ static void dispatch(Client& client,
 
 void	Server::process_buffer(int client_fd)
 {
-	Client	client = *(_clients_by_fd.at(events[i].data.fd));
-	std::string	message = client.get_message();
+	Client	client = *(_clients_by_fd.at(client_fd));
+	std::string	message(client.get_message());
 
-	while (message != std::string::npos)
+	while (message.size() > 0)
 	{
-		std::string	message(client.get_buffer());
-		message = message.substr(0, delim_index);
 		ParsedCommand	command = parseLine(message);
 
-		std::cout << "[" << _fd << "] " << "message: " << message << std::endl;
-		dispatch(this, command);
-		client.get_buffer().erase(0, message.size() + 2);
-		delim_index = client.get_buffer().find("\r\n");
+		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
+		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
+		message = client.get_message();
 	}
 }
 
@@ -121,7 +119,7 @@ void	Server::wait_incoming(void)
 		if (events[i].data.fd == _socketfd)
 		{
 			int	client_fd = accept(_socketfd, (struct sockaddr*) &_serverAddr, &_addrLen);
-			Client	new_client(client_fd, std::string(_password));
+			Client	new_client(client_fd);
 
 			if (client_fd < 0)
 				this->stop("accept() syscall failed");
@@ -174,7 +172,7 @@ void	Server::wait_incoming(void)
 			}
 			catch (std::out_of_range &ex)
 			{
-				std::out << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
+				std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
 				close(events[i].data.fd);
 			}
 		}
@@ -185,18 +183,18 @@ void	Server::add_client(Client &client)
 {
 	auto client_it = _clients.insert(end(_clients), client);
 
-	_clients_by_fd.insert(client.get_fd(), client_it);
-	_clients_by_nickname(client.get_nickname());
-	_clients_by_username(client.get_username());
+	_clients_by_fd.insert({ client.get_fd(), client_it });
+	_clients_by_nickname.insert({ client.get_nickname(), client_it });
 }
 
 void	Server::erase_client(int fd)
 {
-	if (_clients_by_fd.find(fd) == end(_clients_by_fd))
+	auto client_it = _clients_by_fd.find(fd);
+	if (client_it == end(_clients_by_fd))
 		return ;
-	_clients_by_fd.erase(client_it->get_fd());
-	_clients_by_nickname.erase(client_it->get_nickname());
-	_clients_by_username.erase(client_it->get_username());
+	Client client = *(client_it->second);
+	_clients_by_fd.erase(fd);
+	_clients_by_nickname.erase(client.get_nickname());
 	_clients.erase(client_it);
 }
 
@@ -231,8 +229,8 @@ void	Server::stop(const char *message)
 {
 	for (auto it : _clients)
 	{
-		epoll_ctl(it.first, EPOLL_CTL_DEL, it.first, nullptr);
-		close(it.first);
+		epoll_ctl(_epollfd, EPOLL_CTL_DEL, it.get_fd(), nullptr);
+		close(it.get_fd());
 	}
 	if (_epollfd > 0)
 	{

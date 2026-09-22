@@ -1,5 +1,4 @@
 #include "Client.hpp"
-#include "Commands.hpp"
 
 Client::Client(int fd) : _fd(fd)
 {
@@ -78,6 +77,9 @@ std::string	Client::get_server_password(void) const
 std::string	Client::get_message(void)
 {
 	size_t	delim_index = _buffer.find("\r\n");
+
+	if (delim_index == _buffer.npos)
+		return ("");
 	std::string	message(_buffer);
 
 	message = message.substr(0, delim_index);
