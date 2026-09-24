@@ -10,12 +10,12 @@ Client::Client(int fd) : _fd(fd)
 	_username = "*";
 }
 
-std::string&	Client::get_nickname(void) const
+std::string	Client::get_nickname(void) const
 {
 	return (_nickname);
 }
 
-std::string&	Client::get_username(void) const
+std::string	Client::get_username(void) const
 {
 	return (_username);
 }
@@ -69,11 +69,6 @@ void	Client::write_to_client(std::string	message)
 		throw IRCException("send syscall failed");
 }
 
-std::string	Client::get_server_password(void) const
-{
-	return _serverPassword;
-}
-
 std::string	Client::get_message(void)
 {
 	size_t	delim_index = _buffer.find("\r\n");
@@ -84,6 +79,6 @@ std::string	Client::get_message(void)
 
 	message = message.substr(0, delim_index);
 
-	client._buffer.erase(0, message.size() + 2);
+	_buffer.erase(0, message.size() + 2);
 	return message;
 }

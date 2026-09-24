@@ -4,7 +4,7 @@
 
 bool Server::_interrupted = false;
 
-Server::Server(uint16_t port, std::string_view password) : _port(port), _password(password)
+Server::Server(uint16_t port, std::string password) : _port(port), _password(password)
 {
 	_serverAddr.sin_family = AF_INET;
 	_serverAddr.sin_port = _port;
@@ -52,6 +52,9 @@ static void dispatch(Client& client,
                       std::map<std::string, Client*>& clientsByNick,
                       std::map<std::string, Channel*>& channelsByName, std::string server_password)
 {
+	std::cout << "DISPATCH CALLED" << std::endl;
+	std::cout << cmd.prefix << std::endl;
+	std::cout << cmd.command << std::endl;
     if (cmd.command == "PASS")
         handlePass(client, cmd, server_password);
     else if (cmd.command == "NICK")
@@ -159,14 +162,12 @@ void	Server::wait_incoming(void)
 					std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
 					epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 					close(events[i].data.fd);
-					std::cout << std::endl;
 					continue;
 				}
 				if (n < 0 && errno != EAGAIN)
 				{
 					std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
 					Server::stop(nullptr);
-					std::cout << std::endl;
 				}
 				process_buffer(events[i].data.fd);
 			}
@@ -183,18 +184,24 @@ void	Server::add_client(Client &client)
 {
 	auto client_it = _clients.insert(end(_clients), client);
 
-	_clients_by_fd.insert({ client.get_fd(), client_it });
-	_clients_by_nickname.insert({ client.get_nickname(), client_it });
+	_clients_by_fd.insert({ client.get_fd(), &(*client_it) });
+	_clients_by_nickname.insert({ client.get_nickname(), &(*client_it) });
 }
 
 void	Server::erase_client(int fd)
 {
-	auto client_it = _clients_by_fd.find(fd);
-	if (client_it == end(_clients_by_fd))
+	auto client_it = begin(_clients);
+	for (; client_it != end(_clients); client_it++)
+	{
+		if (client_it->get_fd() == fd)
+			break ;
+	}
+	if (client_it == end(_clients))
 		return ;
-	Client client = *(client_it->second);
+	Client *client = &(*client_it);
+
 	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(client.get_nickname());
+	_clients_by_nickname.erase(client->get_nickname());
 	_clients.erase(client_it);
 }
 
