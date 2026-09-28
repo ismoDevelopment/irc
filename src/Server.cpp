@@ -55,6 +55,7 @@ static void dispatch(Client& client,
 	std::cout << "DISPATCH CALLED" << std::endl;
 	std::cout << cmd.prefix << std::endl;
 	std::cout << cmd.command << std::endl;
+
     if (cmd.command == "PASS")
         handlePass(client, cmd, server_password);
     else if (cmd.command == "NICK")
@@ -85,23 +86,22 @@ static void dispatch(Client& client,
     else
         client.write_to_client("421 " + cmd.command + " :Unknown command\r\n");
 
-
     checkRegistration(client);
 }
 
 
 void	Server::process_buffer(int client_fd)
 {
-	Client	client = *(_clients_by_fd.at(client_fd));
-	std::string	message(client.get_message());
+	Client	*client = _clients_by_fd.at(client_fd);
+	std::string	message(client->get_message());
 
 	while (message.size() > 0)
 	{
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
-		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
-		message = client.get_message();
+		dispatch(*client, command, _clients_by_nickname, _channels_by_name, _password);
+		message = client->get_message();
 	}
 }
 

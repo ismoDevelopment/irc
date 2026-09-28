@@ -32,7 +32,7 @@ class Server {
 		sockaddr_in							_serverAddr;
 		socklen_t							_addrLen;
 		uint16_t							_port;
-		std::string					_password;
+		std::string							_password;
 		t_clients							_clients;
 		std::map<int, Client *>				_clients_by_fd;
 		std::map<std::string, Client *>		_clients_by_nickname;
