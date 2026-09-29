@@ -38,8 +38,6 @@ void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, 
 
 void handlePass(Client &client, const ParsedCommand &cmd, const std::string &serverPass)
 {
-	std::cout << cmd.params[0] << std::endl;
-	std::cout << serverPass << std::endl;
 	if (client.is_registered())
 	{
 		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));

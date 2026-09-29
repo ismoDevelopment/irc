@@ -46,16 +46,11 @@ static ParsedCommand parseLine(const std::string& line)
     return cmd;
 }
 
-// ---- ÚNICO SITIO QUE TOCAS AL AÑADIR UN COMANDO NUEVO ----
 static void dispatch(Client& client,
                       const ParsedCommand& cmd,
                       std::map<std::string, Client*>& clientsByNick,
                       std::map<std::string, Channel*>& channelsByName, std::string server_password)
 {
-	std::cout << "DISPATCH CALLED" << std::endl;
-	std::cout << cmd.prefix << std::endl;
-	std::cout << cmd.command << std::endl;
-
     if (cmd.command == "PASS")
         handlePass(client, cmd, server_password);
     else if (cmd.command == "NICK")
@@ -92,30 +87,40 @@ static void dispatch(Client& client,
 
 void	Server::process_buffer(int client_fd)
 {
-	Client	*client = _clients_by_fd.at(client_fd);
-	std::string	message(client->get_message());
+	auto	client_it = _clients_by_fd.find(client_fd);
+
+	if (client_it == end(_clients_by_fd))
+		return;
+
+	Client	&client = *(client_it->second);
+	std::string	message(client.get_message());
 
 	while (message.size() > 0)
 	{
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
-		dispatch(*client, command, _clients_by_nickname, _channels_by_name, _password);
-		message = client->get_message();
+		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
+		message = client.get_message();
 	}
 }
 
 void	Server::wait_incoming(void)
 {
-	epoll_event	events[S_MAX_EVENTS]{};
-	int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, -1);
-
 	if (_interrupted)
 	{
 		this->stop(nullptr);
 	}
+
+	epoll_event	events[S_MAX_EVENTS]{};
+	int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, -1);
+
 	if (nfds < 0)
+	{
+		if (errno == EINTR)
+			this->stop(nullptr);
 		this->stop("epoll_wait syscall failed");
+	}
 
 	for (int i{}; i < nfds; i++)
 	{
@@ -142,7 +147,7 @@ void	Server::wait_incoming(void)
 		{
 			std::cout << "[" << events[i].data.fd << "]" << " closing socket" << std::endl;
 			epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-			close(events[i].data.fd);
+			erase_client(events[i].data.fd);
 			continue;
 		}
 		else if (events[i].events & EPOLLIN)
@@ -161,7 +166,7 @@ void	Server::wait_incoming(void)
 				{
 					std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
 					epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-					close(events[i].data.fd);
+					erase_client(events[i].data.fd);
 					continue;
 				}
 				if (n < 0 && errno != EAGAIN)
@@ -184,24 +189,23 @@ void	Server::add_client(Client &client)
 {
 	auto client_it = _clients.insert(end(_clients), client);
 
-	_clients_by_fd.insert({ client.get_fd(), &(*client_it) });
-	_clients_by_nickname.insert({ client.get_nickname(), &(*client_it) });
+	_clients_by_fd.insert({ client.get_fd(), client_it });
 }
 
 void	Server::erase_client(int fd)
 {
-	auto client_it = begin(_clients);
-	for (; client_it != end(_clients); client_it++)
-	{
-		if (client_it->get_fd() == fd)
-			break ;
-	}
-	if (client_it == end(_clients))
-		return ;
-	Client *client = &(*client_it);
+	epoll_ctl(_epollfd, EPOLL_CTL_DEL, fd, nullptr);
+	close(fd);
+
+	auto	map_it = _clients_by_fd.find(fd);
+
+	if (map_it == end(_clients_by_fd))
+		return;
+	
+	auto client_it = map_it->second;
 
 	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(client->get_nickname());
+	_clients_by_nickname.erase(client_it->get_nickname());
 	_clients.erase(client_it);
 }
 
@@ -234,11 +238,9 @@ void	Server::start()
 
 void	Server::stop(const char *message)
 {
-	for (auto it : _clients)
-	{
-		epoll_ctl(_epollfd, EPOLL_CTL_DEL, it.get_fd(), nullptr);
-		close(it.get_fd());
-	}
+	while (!_clients.empty())
+		erase_client(_clients.front().get_fd());
+
 	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);

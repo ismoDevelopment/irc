@@ -34,7 +34,7 @@ class Server {
 		uint16_t							_port;
 		std::string							_password;
 		t_clients							_clients;
-		std::map<int, Client *>				_clients_by_fd;
+		std::map<int, t_clients::iterator>	_clients_by_fd;
 		std::map<std::string, Client *>		_clients_by_nickname;
 		std::map<std::string, Channel *>	_channels_by_name;
 		void	wait_incoming(void);
