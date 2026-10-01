@@ -38,12 +38,6 @@ void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, 
 
 void handlePass(Client &client, const ParsedCommand &cmd, const std::string &serverPass)
 {
-	if (client.is_registered())
-	{
-		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PASS"));
@@ -62,12 +56,6 @@ void handlePass(Client &client, const ParsedCommand &cmd, const std::string &ser
 
 void handleUser(Client &client, const ParsedCommand &cmd)
 {
-	if (client.is_registered())
-	{
-		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 4)
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "USER"));
@@ -80,12 +68,6 @@ void handleUser(Client &client, const ParsedCommand &cmd)
 
 void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::string, Client*>& clientsByNick, std::map<std::string, Channel*>& channelsByName)
 {
-	if (!sender.is_registered())
-	{
-		sender.write_to_client(ERR_NOTREGISTERED(sender.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
 		sender.write_to_client(ERR_NEEDMOREPARAMS(sender.get_nickname(), "PRIVMSG"));
@@ -161,12 +143,6 @@ void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string
 
 void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "JOIN"));
@@ -187,7 +163,6 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	else
 		channel = it->second;
 
-	// this should not be a reply for JOIN command
 	if (channel->hasMember(&client))
 	{
 		return;
@@ -227,12 +202,6 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PART"));
@@ -261,12 +230,6 @@ void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "TOPIC"));
@@ -312,12 +275,6 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "INVITE"));
@@ -369,12 +326,6 @@ void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string
 
 void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "KICK"));
@@ -436,12 +387,6 @@ void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));

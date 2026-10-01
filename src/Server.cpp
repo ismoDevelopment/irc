@@ -58,29 +58,33 @@ static void dispatch(Client& client,
         handleNick(client, cmd, clientsByNick);
     else if (cmd.command == "USER")
         handleUser(client, cmd);
-    // run checkRegistration here before moving on, also remove redundant check from commands
-    else if (cmd.command == "JOIN")
-        handleJoin(client, cmd, channelsByName);
-    else if (cmd.command == "PART")
-        handlePart(client, cmd, channelsByName);
-    else if (cmd.command == "PRIVMSG")
-        handlePrivmsg(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "NOTICE")
-        handleNotice(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "TOPIC")
-        handleTopic(client, cmd, channelsByName);
-    else if (cmd.command == "INVITE")
-        handleInvite(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "KICK")
-        handleKick(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "MODE")
-        handleMode(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "QUIT")
-        handleQuit(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "PING")
-        handlePing(client, cmd);
-    else
-        client.write_to_client("421 " + cmd.command + " :Unknown command\r\n");
+	else if (cmd.command == "NOTICE")
+		handleNotice(client, cmd, clientsByNick, channelsByName);
+ 	else if (!client.is_registered())
+	{
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		return;
+	}
+	else if (cmd.command == "JOIN")
+		handleJoin(client, cmd, channelsByName);
+	else if (cmd.command == "PART")
+		handlePart(client, cmd, channelsByName);
+	else if (cmd.command == "PRIVMSG")
+		handlePrivmsg(client, cmd, clientsByNick, channelsByName);
+	else if (cmd.command == "TOPIC")
+		handleTopic(client, cmd, channelsByName);
+	else if (cmd.command == "INVITE")
+		handleInvite(client, cmd, clientsByNick, channelsByName);
+	else if (cmd.command == "KICK")
+		handleKick(client, cmd, clientsByNick, channelsByName);
+	else if (cmd.command == "MODE")
+		handleMode(client, cmd, clientsByNick, channelsByName);
+	else if (cmd.command == "QUIT")
+		handleQuit(client, cmd, clientsByNick, channelsByName);
+	else if (cmd.command == "PING")
+		handlePing(client, cmd);
+	else
+		client.write_to_client("421 " + cmd.command + " :Unknown command\r\n");
 
     checkRegistration(client);
 }
