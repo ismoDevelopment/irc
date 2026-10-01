@@ -90,17 +90,23 @@
 #define ERR_NOTREGISTERED(target) \
     (":localhost 451 " + (target) + " :You have not registered\r\n")
 
-/*
-TO IMPLEMENT:
+#define RPL_TOPIC(target) \
+    (":localhost 332 " + (target) + " :No topic is set\r\n")
 
-RPL_TOPIC
-RPL_AWAY
-RPL_YOUREOPER
-RPL_INVITING
-RPL_NOTOPIC
-RPL_BANLIST
-RPL_CHANNELMODEIS
-RPL_ENDOFBANLIST
+#define RPL_AWAY(target) \
+    (":localhost ERR_CODE " + (target) + " :MESSAGE\r\n")
 
+#define RPL_BANLIST(target) \
+    (":localhost ERR_CODE " + (target) + " :MESSAGE\r\n")
 
-*/
+#define RPL_CHANNELMODEIS(target) \
+    (":localhost ERR_CODE " + (target) + " :MESSAGE\r\n")
+
+#define RPL_BANLIST(target) \
+    (":localhost ERR_CODE " + (target) + " :MESSAGE\r\n")
+
+#define RPL_CHANNELMODEIS(target) \
+    (":localhost ERR_CODE " + (target) + " :MESSAGE\r\n")
+
+#define RPL_ENDOFBANLIST(target) \
+    (":localhost ERR_CODE " + (target) + " :MESSAGE\r\n")

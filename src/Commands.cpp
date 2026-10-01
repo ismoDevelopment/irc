@@ -190,7 +190,6 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	// this should not be a reply for JOIN command
 	if (channel->hasMember(&client))
 	{
-		client.write_to_client("443 " + client.get_nickname() + " " + channelName + " :is already on channel\r\n");
 		return;
 	}
 
@@ -264,7 +263,7 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client("451 :You have not regisrtered\r\n");
+		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
 		return;
 	}
 

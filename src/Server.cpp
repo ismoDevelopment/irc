@@ -10,6 +10,7 @@ Server::Server(uint16_t port, std::string password) : _port(port), _password(pas
 	_serverAddr.sin_port = _port;
 	_serverAddr.sin_addr.s_addr = INADDR_ANY;
 	_addrLen = sizeof(_serverAddr);
+	_reuse_addr_value = 1;
 }
 
 void	Server::sigint_handler(int signum)
@@ -201,7 +202,7 @@ void	Server::erase_client(int fd)
 
 	if (map_it == end(_clients_by_fd))
 		return;
-	
+
 	auto client_it = map_it->second;
 
 	_clients_by_fd.erase(fd);
@@ -214,6 +215,8 @@ void	Server::start()
 	_socketfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_socketfd < 0)
 		this->stop("socket() syscall failed");
+	if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0)
+		this->stop("Failed to set socket option");
 	if (bind(_socketfd, (struct sockaddr*) &_serverAddr, _addrLen) < 0)
 		this->stop("bind() syscall failed");
 	if (listen(_socketfd, S_MAX_PENDING) < 0)
