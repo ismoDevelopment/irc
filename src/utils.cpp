@@ -20,6 +20,6 @@ uint16_t	convert_to_port(const char *str)
 
 void	set_nonblock(int fd)
 {
-	if ((fd, F_SETFL, flags | O_NONBLOCK) < 0)
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
 		throw IRCException("fcntl() syscall failed");
 }
