@@ -4,7 +4,10 @@
 
 bool Server::_interrupted = false;
 
-Server::Server(uint16_t port, std::string password) : _port(port), _password(password)
+// _epollfd and _socketfd were never initialized. -1 means the fd is not open,
+// so stop() can close each one once.
+Server::Server(uint16_t port, std::string password)
+	: _epollfd(-1), _socketfd(-1), _port(port), _password(password)
 {
 	_serverAddr.sin_family = AF_INET;
 	_serverAddr.sin_port = _port;
@@ -244,13 +247,18 @@ void	Server::stop(const char *message)
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
+	// Set _epollfd and _socketfd back to -1 after close, so a later stop() does not close them again.
 	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);
 		close(_epollfd);
+		_epollfd = -1;
 	}
 	if (_socketfd > 0)
+	{
 		close(_socketfd);
+		_socketfd = -1;
+	}
 
 	if (message)
 		throw IRCException(message);
