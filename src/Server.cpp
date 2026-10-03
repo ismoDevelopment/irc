@@ -2,6 +2,8 @@
 #include "utils.hpp"
 #include "Commands.hpp"
 
+#include <arpa/inet.h>
+
 bool Server::_interrupted = false;
 
 // _epollfd and _socketfd were never initialized. -1 means the fd is not open,
@@ -130,11 +132,18 @@ void	Server::wait_incoming(void)
 	{
 		if (events[i].data.fd == _socketfd)
 		{
-			int	client_fd = accept(_socketfd, (struct sockaddr*) &_serverAddr, &_addrLen);
+			// accept writes the client address here. _serverAddr stays the address bind used.
+			sockaddr_in	peerAddr{};
+			socklen_t	peerLen = sizeof(peerAddr);
+			int	client_fd = accept(_socketfd, (struct sockaddr*) &peerAddr, &peerLen);
 			Client	new_client(client_fd);
 
 			if (client_fd < 0)
 				this->stop("accept() syscall failed");
+
+			char	host[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr)
+				new_client.set_host(host);
 
 			set_nonblock(client_fd);
 

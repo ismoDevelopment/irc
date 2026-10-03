@@ -110,7 +110,7 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 			sender.write_to_client(ERR_CANNOTSENDTOCHAN(sender.get_nickname(), target));
 			return;
 		}
-		channel->broadcastMessage(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
+		channel->broadcastMessage(":" + sender.get_prefix() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
 	}
 	else
 	{
@@ -121,7 +121,7 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 			return;
 		}
 
-		it->second->write_to_client(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n");
+		it->second->write_to_client(":" + sender.get_prefix() + " PRIVMSG " + target + " :" + message + "\r\n");
 	}
 
 }
