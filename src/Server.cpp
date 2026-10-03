@@ -93,15 +93,14 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
     checkRegistration(client);
 }
 
-
 void	Server::process_buffer(int client_fd)
 {
-	auto	client_it = _clients_by_fd.find(client_fd);
+	auto	map_it = _clients_by_fd.find(client_fd);
 
-	if (client_it == end(_clients_by_fd))
+	if (map_it == end(_clients_by_fd))
 		return;
 
-	Client	&client = *(client_it->second);
+	Client	&client = *(map_it->second);
 	std::string	message(client.get_message());
 
 	while (message.size() > 0)
@@ -171,18 +170,18 @@ void	Server::wait_incoming(void)
 
 			if (map_it == end(_clients_by_fd))
 			{
-				std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
+				std::cout << "[" << events[i].data.fd << "]" << " Unable to find client in map" << std::endl;
 				close(events[i].data.fd);
 				continue;
 			}
 
-			auto client_it = map_it->second;
+			Client	&client = *(map_it->second);
 			char	received[1024]{};
 			ssize_t	n = recv(events[i].data.fd, &received, 1024, 0);
 
 			while (n > 0)
 			{
-				client_it->add_buffer(received);
+				client.add_buffer(received);
 				n = recv(events[i].data.fd, &received, 1024, 0);
 			}
 			if (n == 0)
@@ -221,7 +220,7 @@ void	Server::erase_client(int fd)
 
 	Client	&client = *(map_it->second);
 	
-	handleCleanup(client);
+	handleCleanup(client); // now it gets cleansed here
 	_clients_by_fd.erase(fd);
 	_clients_by_nickname.erase(client.get_nickname());
 	_clients.erase(map_it->second);

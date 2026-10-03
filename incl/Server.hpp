@@ -49,7 +49,7 @@ class Server {
 		void	stop(const char *message);
 		void	add_client(Client &client);
 		void	erase_client(int fd);
-		static void	sigint_handler(int);
+		static	void	sigint_handler(int);
 		void	checkRegistration(Client &client);
 		void 	dispatch(Client& client, const ParsedCommand& cmd);
 		void 	handleNick(Client &client, const ParsedCommand &cmd);

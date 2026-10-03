@@ -296,9 +296,9 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client(":" + _hostname + " 331 " + client.get_nickname() + " " + channelName + " :No topic is set\r\n");
+			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname()));
 		else
-			client.write_to_client(":" + _hostname + " 332 " + client.get_nickname() + " " + channelName + " :" + channel->getTopic() + "\r\n");
+			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getTopic()));
 		return;
 	}
 
