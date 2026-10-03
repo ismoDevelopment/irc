@@ -30,6 +30,12 @@ void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, 
 	if (!oldNick.empty())
 		clientsByNick.erase(oldNick);
 
+	// TODO: optional, but recommended. After a nick change, broadcast
+	// ":oldprefix NICK newnick" to this client and to everyone who shares a
+	// channel with them. Clients such as irssi only rename the user when they
+	// receive that line, so /nick otherwise keeps the old name in the status
+	// bar and channel list while later messages arrive from the new nick.
+	// Capture the prefix before set_nickname(), since get_prefix() uses the current nick.
 	client.set_nickname(newNick);
 	clientsByNick[newNick] = &client;
 
