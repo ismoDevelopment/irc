@@ -9,9 +9,14 @@ bool Server::_interrupted = false;
 // _epollfd and _socketfd were never initialized. -1 means the fd is not open,
 // so stop() can close each one once.
 Server::Server(uint16_t port, std::string password)
-	: _epollfd(-1), _socketfd(-1), _port(port), _password(password)
+	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("irc.local")
 {
 	_reuse_addr_value = 1;
+}
+
+std::string	Server::get_hostname(void) const
+{
+	return (_hostname);
 }
 
 void	Server::sigint_handler(int signum)

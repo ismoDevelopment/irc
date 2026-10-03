@@ -32,6 +32,7 @@ class Server {
 		int									_reuse_addr_value;
 		uint16_t							_port;
 		std::string							_password;
+		std::string							_hostname;
 		t_clients							_clients;
 		std::map<int, t_clients::iterator>	_clients_by_fd;
 		std::map<std::string, Client *>		_clients_by_nickname;
@@ -43,6 +44,7 @@ class Server {
 	public:
 		Server(uint16_t port, std::string password);
 
+		std::string	get_hostname(void) const;
 		void	start(void);
 		void	stop(const char *message);
 		void	add_client(Client &client);
