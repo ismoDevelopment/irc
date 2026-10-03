@@ -3,6 +3,7 @@
 #include "Commands.hpp"
 
 #include <arpa/inet.h>
+#include <climits>
 
 bool Server::_interrupted = false;
 
@@ -11,7 +12,11 @@ bool Server::_interrupted = false;
 Server::Server(uint16_t port, std::string password)
 	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("irc.local")
 {
+	char	hostname[HOST_NAME_MAX + 1]{};
+
 	_reuse_addr_value = 1;
+	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
+		_hostname = hostname;
 }
 
 std::string	Server::get_hostname(void) const
@@ -56,39 +61,40 @@ static ParsedCommand parseLine(const std::string& line)
 static void dispatch(Client& client,
                       const ParsedCommand& cmd,
                       std::map<std::string, Client*>& clientsByNick,
-                      std::map<std::string, Channel*>& channelsByName, std::string server_password)
+                      std::map<std::string, Channel*>& channelsByName, std::string server_password,
+                      const std::string &hostname)
 {
     if (cmd.command == "PASS")
-        handlePass(client, cmd, server_password);
+        handlePass(client, cmd, server_password, hostname);
     else if (cmd.command == "NICK")
-        handleNick(client, cmd, clientsByNick);
+        handleNick(client, cmd, clientsByNick, hostname);
     else if (cmd.command == "USER")
-        handleUser(client, cmd);
+        handleUser(client, cmd, hostname);
     // run checkRegistration here before moving on, also remove redundant check from commands
     else if (cmd.command == "JOIN")
-        handleJoin(client, cmd, channelsByName);
+        handleJoin(client, cmd, channelsByName, hostname);
     else if (cmd.command == "PART")
-        handlePart(client, cmd, channelsByName);
+        handlePart(client, cmd, channelsByName, hostname);
     else if (cmd.command == "PRIVMSG")
-        handlePrivmsg(client, cmd, clientsByNick, channelsByName);
+        handlePrivmsg(client, cmd, clientsByNick, channelsByName, hostname);
     else if (cmd.command == "NOTICE")
         handleNotice(client, cmd, clientsByNick, channelsByName);
     else if (cmd.command == "TOPIC")
-        handleTopic(client, cmd, channelsByName);
+        handleTopic(client, cmd, channelsByName, hostname);
     else if (cmd.command == "INVITE")
-        handleInvite(client, cmd, clientsByNick, channelsByName);
+        handleInvite(client, cmd, clientsByNick, channelsByName, hostname);
     else if (cmd.command == "KICK")
-        handleKick(client, cmd, clientsByNick, channelsByName);
+        handleKick(client, cmd, clientsByNick, channelsByName, hostname);
     else if (cmd.command == "MODE")
-        handleMode(client, cmd, clientsByNick, channelsByName);
+        handleMode(client, cmd, clientsByNick, channelsByName, hostname);
     else if (cmd.command == "QUIT")
         handleQuit(client, cmd, clientsByNick, channelsByName);
     else if (cmd.command == "PING")
-        handlePing(client, cmd);
+        handlePing(client, cmd, hostname);
     else
-        client.write_to_client("421 " + cmd.command + " :Unknown command\r\n");
+        client.write_to_client(":" + hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
 
-    checkRegistration(client);
+    checkRegistration(client, hostname);
 }
 
 
@@ -107,7 +113,7 @@ void	Server::process_buffer(int client_fd)
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
-		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
+		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password, _hostname);
 		message = client.get_message();
 	}
 }
