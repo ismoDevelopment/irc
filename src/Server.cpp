@@ -11,10 +11,6 @@ bool Server::_interrupted = false;
 Server::Server(uint16_t port, std::string password)
 	: _epollfd(-1), _socketfd(-1), _port(port), _password(password)
 {
-	_serverAddr.sin_family = AF_INET;
-	_serverAddr.sin_port = _port;
-	_serverAddr.sin_addr.s_addr = INADDR_ANY;
-	_addrLen = sizeof(_serverAddr);
 	_reuse_addr_value = 1;
 }
 
@@ -132,7 +128,6 @@ void	Server::wait_incoming(void)
 	{
 		if (events[i].data.fd == _socketfd)
 		{
-			// accept writes the client address here. _serverAddr stays the address bind used.
 			sockaddr_in	peerAddr{};
 			socklen_t	peerLen = sizeof(peerAddr);
 			int	client_fd = accept(_socketfd, (struct sockaddr*) &peerAddr, &peerLen);
@@ -229,7 +224,12 @@ void	Server::start()
 		this->stop("socket() syscall failed");
 	if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0)
 		this->stop("Failed to set socket option");
-	if (bind(_socketfd, (struct sockaddr*) &_serverAddr, _addrLen) < 0)
+
+	sockaddr_in	serverAddr{};
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = _port;
+	serverAddr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(_socketfd, (struct sockaddr*) &serverAddr, sizeof(serverAddr)) < 0)
 		this->stop("bind() syscall failed");
 	if (listen(_socketfd, S_MAX_PENDING) < 0)
 		this->stop("listen() syscall failed");

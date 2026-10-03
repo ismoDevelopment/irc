@@ -30,8 +30,6 @@ class Server {
 		int									_epollfd;
 		int									_socketfd;
 		int									_reuse_addr_value;
-		sockaddr_in							_serverAddr;
-		socklen_t							_addrLen;
 		uint16_t							_port;
 		std::string							_password;
 		t_clients							_clients;
