@@ -147,7 +147,7 @@ void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string
 		if (!channel->hasMember(&sender))
 			return;
 
-		channel->broadcastMessage(":" + sender.get_nickname() + " NOTICE " + target + " :" + message + "\r\n", &sender);
+		channel->broadcastMessage(":" + sender.get_prefix() + " NOTICE " + target + " :" + message + "\r\n", &sender);
 	}
 	else
 	{
@@ -155,7 +155,7 @@ void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string
 		if (it == clientsByNick.end())
 			return;
 
-		it->second->write_to_client(":" + sender.get_nickname() + " NOTICE " + target + " :" + message + "\r\n");
+		it->second->write_to_client(":" + sender.get_prefix() + " NOTICE " + target + " :" + message + "\r\n");
 	}
 }
 
@@ -222,7 +222,7 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	if (isNewChannel)
 		channel->addOperator(&client);
 
-	channel->broadcastMessage(":" + client.get_nickname() + " JOIN " + channelName + "\r\n");
+	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
 }
 
 void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
@@ -249,7 +249,7 @@ void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	}
 
 	Channel *channel = it->second;
-	channel->broadcastMessage(":" + client.get_nickname() + " PART " + channelName + "\r\n", NULL);
+	channel->broadcastMessage(":" + client.get_prefix() + " PART " + channelName + "\r\n", NULL);
 	channel->removeMember(&client);
 
 	if (channel->isEmpty())
@@ -307,7 +307,7 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 	const std::string &newTopic = cmd.params[1];
 	channel->setTopic(newTopic);
-	channel->broadcastMessage(":" + client.get_nickname() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
+	channel->broadcastMessage(":" + client.get_prefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
 }
 
 void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
@@ -364,7 +364,7 @@ void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string
 	channel->addInvited(targetClient);
 
 	client.write_to_client("341 " + targetNick + " " + channelName + "\r\n");
-	targetClient->write_to_client(":" + client.get_nickname() + " INVITE " + targetNick + " " + channelName + "\r\n");
+	targetClient->write_to_client(":" + client.get_prefix() + " INVITE " + targetNick + " " + channelName + "\r\n");
 }
 
 void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
@@ -421,10 +421,10 @@ void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	if (cmd.params.size() >= 3)
 	{
 		const std::string &reason = cmd.params[2];
-		channel->broadcastMessage(":" + client.get_nickname() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n", NULL);
+		channel->broadcastMessage(":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n", NULL);
 	}
 	else
-		channel->broadcastMessage(":" + client.get_nickname() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
+		channel->broadcastMessage(":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
 
 	channel->removeMember(targetClient);
 	if (channel->isEmpty())
@@ -610,7 +610,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 	if (!appliedFlags.empty())
 	{
-		std::string confirm = ":" + client.get_nickname() + " MODE " + channelName + " " + appliedFlags;
+		std::string confirm = ":" + client.get_prefix() + " MODE " + channelName + " " + appliedFlags;
 		for (size_t i = 0; i < appliedParams.size(); i++)
 			confirm += " " + appliedParams[i];
 		channel->broadcastMessage(confirm + "\r\n", NULL);
@@ -651,7 +651,7 @@ void handleQuit(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	{
 		Channel *channel = it->second;
 		if (channel->hasMember(&client))
-			channel->broadcastMessage(":" + client.get_nickname() + " QUIT :" + reason + "\r\n", &client);
+			channel->broadcastMessage(":" + client.get_prefix() + " QUIT :" + reason + "\r\n", &client);
 	}
 
 	handleCleanup(client, clientsByNick, channelsByName);
