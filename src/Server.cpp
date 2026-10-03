@@ -1,15 +1,26 @@
 #include "Server.hpp"
 #include "utils.hpp"
 
+#include <arpa/inet.h>
+#include <climits>
+
 bool Server::_interrupted = false;
 
-Server::Server(uint16_t port, std::string password) : _port(port), _password(password)
+// _epollfd and _socketfd were never initialized. -1 means the fd is not open,
+// so stop() can close each one once.
+Server::Server(uint16_t port, std::string password)
+	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("irc.local")
 {
-	_serverAddr.sin_family = AF_INET;
-	_serverAddr.sin_port = _port;
-	_serverAddr.sin_addr.s_addr = INADDR_ANY;
-	_addrLen = sizeof(_serverAddr);
+	char	hostname[HOST_NAME_MAX + 1]{};
+
 	_reuse_addr_value = 1;
+	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
+		_hostname = hostname;
+}
+
+std::string	Server::get_hostname(void) const
+{
+	return (_hostname);
 }
 
 void	Server::sigint_handler(int signum)
@@ -77,7 +88,7 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
     else if (cmd.command == "PING")
         handlePing(client, cmd);
     else
-        client.write_to_client("421 " + cmd.command + " :Unknown command\r\n");
+        client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
 
     checkRegistration(client);
 }
@@ -124,11 +135,17 @@ void	Server::wait_incoming(void)
 	{
 		if (events[i].data.fd == _socketfd)
 		{
-			int	client_fd = accept(_socketfd, (struct sockaddr*) &_serverAddr, &_addrLen);
+			sockaddr_in	peerAddr{};
+			socklen_t	peerLen = sizeof(peerAddr);
+			int	client_fd = accept(_socketfd, (struct sockaddr*) &peerAddr, &peerLen);
 			Client	new_client(client_fd);
 
 			if (client_fd < 0)
 				this->stop("accept() syscall failed");
+
+			char	host[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr)
+				new_client.set_host(host);
 
 			set_nonblock(client_fd);
 
@@ -217,7 +234,12 @@ void	Server::start()
 		this->stop("socket() syscall failed");
 	if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0)
 		this->stop("Failed to set socket option");
-	if (bind(_socketfd, (struct sockaddr*) &_serverAddr, _addrLen) < 0)
+
+	sockaddr_in	serverAddr{};
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = _port;
+	serverAddr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(_socketfd, (struct sockaddr*) &serverAddr, sizeof(serverAddr)) < 0)
 		this->stop("bind() syscall failed");
 	if (listen(_socketfd, S_MAX_PENDING) < 0)
 		this->stop("listen() syscall failed");
@@ -244,13 +266,18 @@ void	Server::stop(const char *message)
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
+	// Set _epollfd and _socketfd back to -1 after close, so a later stop() does not close them again.
 	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);
 		close(_epollfd);
+		_epollfd = -1;
 	}
 	if (_socketfd > 0)
+	{
 		close(_socketfd);
+		_socketfd = -1;
+	}
 
 	if (message)
 		throw IRCException(message);

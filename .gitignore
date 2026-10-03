@@ -1,6 +1,6 @@
 tmp/
 ignore/
 .vscode/
-./irc_server
-# ./en.subject.pdf
-# ./TODO.md
+/irc_server
+# /en.subject.pdf
+# /TODO.md
