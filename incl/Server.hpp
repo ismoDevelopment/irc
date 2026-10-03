@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <signal.h>
 #include <cstdint>
 #include <sys/epoll.h>
@@ -9,7 +10,6 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
-#include <map>
 #include <map>
 #include <string_view>
 #include <stdexcept>
@@ -45,9 +45,24 @@ class Server {
 	public:
 		Server(uint16_t port, std::string password);
 
-		void	start(void);
-		void	stop(const char *message);
-		void	add_client(Client &client);
-		void	erase_client(int fd);
+		void		start(void);
+		void		stop(const char *message);
+		void		add_client(Client &client);
+		void		erase_client(int fd);
 		static void	sigint_handler(int);
+		void		checkRegistration(Client &client);
+		void 		dispatch(Client& client, const ParsedCommand& cmd);
+		void 		handleNick(Client &client, const ParsedCommand &cmd);
+		void 		handlePass(Client &client, const ParsedCommand &cmd);
+		void 		handleUser(Client &client, const ParsedCommand &cmd);
+		void 		handlePrivmsg(Client &sender, const ParsedCommand &cmd);
+		void 		handleNotice(Client &sender, const ParsedCommand &cmd);
+		void 		handleJoin(Client &client, const ParsedCommand &cmd);
+		void 		handlePart(Client &client, const ParsedCommand &cmd);
+		void 		handleTopic(Client &client, const ParsedCommand &cmd);
+		void 		handleInvite(Client &client, const ParsedCommand &cmd);
+		void 		handleKick(Client &client, const ParsedCommand &cmd);
+		void 		handleMode(Client &client, const ParsedCommand &cmd);
+		void 		handlePing(Client &client, const ParsedCommand &cmd);
+		void 		handleCleanup(Client &client);
 };

@@ -1,6 +1,5 @@
 #include "Server.hpp"
 #include "utils.hpp"
-#include "Commands.hpp"
 
 bool Server::_interrupted = false;
 
@@ -40,43 +39,41 @@ static ParsedCommand parseLine(const std::string& line)
         tokens.push_back(token);
     }
     if (tokens.empty())
-        return cmd;
+    {
+		return cmd;
+	}
+	cmd.prefix = "localhost";
     cmd.command = tokens[0];
     for (size_t i = 1; i < tokens.size(); i++)
         cmd.params.push_back(tokens[i]);
     return cmd;
 }
 
-static void dispatch(Client& client,
-                      const ParsedCommand& cmd,
-                      std::map<std::string, Client*>& clientsByNick,
-                      std::map<std::string, Channel*>& channelsByName, std::string server_password)
+void Server::dispatch(Client& client, const ParsedCommand& cmd)
 {
     if (cmd.command == "PASS")
-        handlePass(client, cmd, server_password);
+        handlePass(client, cmd);
     else if (cmd.command == "NICK")
-        handleNick(client, cmd, clientsByNick);
+        handleNick(client, cmd);
     else if (cmd.command == "USER")
         handleUser(client, cmd);
     // run checkRegistration here before moving on, also remove redundant check from commands
     else if (cmd.command == "JOIN")
-        handleJoin(client, cmd, channelsByName);
+        handleJoin(client, cmd);
     else if (cmd.command == "PART")
-        handlePart(client, cmd, channelsByName);
+        handlePart(client, cmd);
     else if (cmd.command == "PRIVMSG")
-        handlePrivmsg(client, cmd, clientsByNick, channelsByName);
+        handlePrivmsg(client, cmd);
     else if (cmd.command == "NOTICE")
-        handleNotice(client, cmd, clientsByNick, channelsByName);
+        handleNotice(client, cmd);
     else if (cmd.command == "TOPIC")
-        handleTopic(client, cmd, channelsByName);
+        handleTopic(client, cmd);
     else if (cmd.command == "INVITE")
-        handleInvite(client, cmd, clientsByNick, channelsByName);
+        handleInvite(client, cmd);
     else if (cmd.command == "KICK")
-        handleKick(client, cmd, clientsByNick, channelsByName);
+        handleKick(client, cmd);
     else if (cmd.command == "MODE")
-        handleMode(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "QUIT")
-        handleQuit(client, cmd, clientsByNick, channelsByName);
+        handleMode(client, cmd);
     else if (cmd.command == "PING")
         handlePing(client, cmd);
     else
@@ -101,7 +98,7 @@ void	Server::process_buffer(int client_fd)
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
-		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
+		dispatch(client, command);
 		message = client.get_message();
 	}
 }
@@ -153,35 +150,37 @@ void	Server::wait_incoming(void)
 		}
 		else if (events[i].events & EPOLLIN)
 		{
-			try {
-				Client	&client = *(_clients_by_fd.at(events[i].data.fd));
-				char	received[1024]{};
-				ssize_t	n = recv(events[i].data.fd, &received, 1024, 0);
+			auto map_it = _clients_by_fd.find(events[i].data.fd);
 
-				while (n > 0)
-				{
-					client.add_buffer(received);
-					n = recv(events[i].data.fd, &received, 1024, 0);
-				}
-				if (n == 0)
-				{
-					std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
-					epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-					erase_client(events[i].data.fd);
-					continue;
-				}
-				if (n < 0 && errno != EAGAIN)
-				{
-					std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
-					Server::stop(nullptr);
-				}
-				process_buffer(events[i].data.fd);
-			}
-			catch (std::out_of_range &ex)
+			if (map_it == end(_clients_by_fd))
 			{
 				std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
 				close(events[i].data.fd);
+				continue;
 			}
+
+			auto client_it = map_it->second;
+			char	received[1024]{};
+			ssize_t	n = recv(events[i].data.fd, &received, 1024, 0);
+
+			while (n > 0)
+			{
+				client_it->add_buffer(received);
+				n = recv(events[i].data.fd, &received, 1024, 0);
+			}
+			if (n == 0)
+			{
+				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
+				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+				erase_client(events[i].data.fd);
+				continue;
+			}
+			if (n < 0 && errno != EAGAIN)
+			{
+				std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
+				Server::stop(nullptr);
+			}
+			process_buffer(events[i].data.fd);
 		}
 	}
 }
@@ -203,11 +202,12 @@ void	Server::erase_client(int fd)
 	if (map_it == end(_clients_by_fd))
 		return;
 
-	auto client_it = map_it->second;
-
+	Client	&client = *(map_it->second);
+	
+	handleCleanup(client);
 	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(client_it->get_nickname());
-	_clients.erase(client_it);
+	_clients_by_nickname.erase(client.get_nickname());
+	_clients.erase(map_it->second);
 }
 
 void	Server::start()
