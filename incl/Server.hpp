@@ -15,6 +15,7 @@
 #include <sstream>
 #include <list>
 #include <algorithm>
+#include <signal.h>
 #include "Channel.hpp"
 #include "Client.hpp"
 #include "client_replies.hpp"
