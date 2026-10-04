@@ -16,6 +16,20 @@ Server::Server(uint16_t port, std::string password)
 	_reuse_addr_value = 1;
 	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
 		_hostname = hostname;
+	
+	_commands_map["NICK"]    = &Server::handleNick;
+	_commands_map["PASS"]    = &Server::handlePass;
+	_commands_map["PRIVMSG"] = &Server::handlePrivmsg;
+	_commands_map["USER"]    = &Server::handleUser;
+	_commands_map["NOTICE"]  = &Server::handleNotice;
+	_commands_map["JOIN"]    = &Server::handleJoin;
+	_commands_map["PART"]    = &Server::handlePart;
+	_commands_map["TOPIC"]   = &Server::handleTopic;
+	_commands_map["INVITE"]  = &Server::handleInvite;
+	_commands_map["KICK"]    = &Server::handleKick;
+	_commands_map["MODE"]    = &Server::handleMode;
+	_commands_map["PING"]    = &Server::handlePing;
+	_commands_map["QUIT"]    = &Server::handleQuit;
 }
 
 std::string	Server::get_hostname(void) const
@@ -62,34 +76,12 @@ static ParsedCommand parseLine(const std::string& line)
 
 void Server::dispatch(Client& client, const ParsedCommand& cmd)
 {
-    if (cmd.command == "PASS")
-        handlePass(client, cmd);
-    else if (cmd.command == "NICK")
-        handleNick(client, cmd);
-    else if (cmd.command == "USER")
-        handleUser(client, cmd);
-    // run checkRegistration here before moving on, also remove redundant check from commands
-    else if (cmd.command == "JOIN")
-        handleJoin(client, cmd);
-    else if (cmd.command == "PART")
-        handlePart(client, cmd);
-    else if (cmd.command == "PRIVMSG")
-        handlePrivmsg(client, cmd);
-    else if (cmd.command == "NOTICE")
-        handleNotice(client, cmd);
-    else if (cmd.command == "TOPIC")
-        handleTopic(client, cmd);
-    else if (cmd.command == "INVITE")
-        handleInvite(client, cmd);
-    else if (cmd.command == "KICK")
-        handleKick(client, cmd);
-    else if (cmd.command == "MODE")
-        handleMode(client, cmd);
-    else if (cmd.command == "PING")
-        handlePing(client, cmd);
-    else
-        client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
+	auto	cmd_it = _commands_map.find(cmd.command);
 
+	if (cmd_it == end(_commands_map))
+		client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
+	else
+		(this->*(cmd_it->second))(client, cmd);
     checkRegistration(client);
 }
 
