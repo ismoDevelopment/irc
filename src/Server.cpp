@@ -1,16 +1,40 @@
 #include "Server.hpp"
 #include "utils.hpp"
-#include "Commands.hpp"
+
+#include <arpa/inet.h>
+#include <climits>
 
 bool Server::_interrupted = false;
 
-Server::Server(uint16_t port, std::string password) : _port(port), _password(password)
+// _epollfd and _socketfd were never initialized. -1 means the fd is not open,
+// so stop() can close each one once.
+Server::Server(uint16_t port, std::string password)
+	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("irc.local")
 {
-	_serverAddr.sin_family = AF_INET;
-	_serverAddr.sin_port = _port;
-	_serverAddr.sin_addr.s_addr = INADDR_ANY;
-	_addrLen = sizeof(_serverAddr);
+	char	hostname[HOST_NAME_MAX + 1]{};
+
 	_reuse_addr_value = 1;
+	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
+		_hostname = hostname;
+	
+	_commands_map["NICK"]    = &Server::handleNick;
+	_commands_map["PASS"]    = &Server::handlePass;
+	_commands_map["PRIVMSG"] = &Server::handlePrivmsg;
+	_commands_map["USER"]    = &Server::handleUser;
+	_commands_map["NOTICE"]  = &Server::handleNotice;
+	_commands_map["JOIN"]    = &Server::handleJoin;
+	_commands_map["PART"]    = &Server::handlePart;
+	_commands_map["TOPIC"]   = &Server::handleTopic;
+	_commands_map["INVITE"]  = &Server::handleInvite;
+	_commands_map["KICK"]    = &Server::handleKick;
+	_commands_map["MODE"]    = &Server::handleMode;
+	_commands_map["PING"]    = &Server::handlePing;
+	_commands_map["QUIT"]    = &Server::handleQuit;
+}
+
+std::string	Server::get_hostname(void) const
+{
+	return (_hostname);
 }
 
 void	Server::sigint_handler(int signum)
@@ -40,60 +64,35 @@ static ParsedCommand parseLine(const std::string& line)
         tokens.push_back(token);
     }
     if (tokens.empty())
-        return cmd;
+    {
+		return cmd;
+	}
+	cmd.prefix = "localhost";
     cmd.command = tokens[0];
     for (size_t i = 1; i < tokens.size(); i++)
         cmd.params.push_back(tokens[i]);
     return cmd;
 }
 
-static void dispatch(Client& client,
-                      const ParsedCommand& cmd,
-                      std::map<std::string, Client*>& clientsByNick,
-                      std::map<std::string, Channel*>& channelsByName, std::string server_password)
+void Server::dispatch(Client& client, const ParsedCommand& cmd)
 {
-    if (cmd.command == "PASS")
-        handlePass(client, cmd, server_password);
-    else if (cmd.command == "NICK")
-        handleNick(client, cmd, clientsByNick);
-    else if (cmd.command == "USER")
-        handleUser(client, cmd);
-    // run checkRegistration here before moving on, also remove redundant check from commands
-    else if (cmd.command == "JOIN")
-        handleJoin(client, cmd, channelsByName);
-    else if (cmd.command == "PART")
-        handlePart(client, cmd, channelsByName);
-    else if (cmd.command == "PRIVMSG")
-        handlePrivmsg(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "NOTICE")
-        handleNotice(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "TOPIC")
-        handleTopic(client, cmd, channelsByName);
-    else if (cmd.command == "INVITE")
-        handleInvite(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "KICK")
-        handleKick(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "MODE")
-        handleMode(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "QUIT")
-        handleQuit(client, cmd, clientsByNick, channelsByName);
-    else if (cmd.command == "PING")
-        handlePing(client, cmd);
-    else
-        client.write_to_client("421 " + cmd.command + " :Unknown command\r\n");
+	auto	cmd_it = _commands_map.find(cmd.command);
 
+	if (cmd_it == end(_commands_map))
+		client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
+	else
+		(this->*(cmd_it->second))(client, cmd);
     checkRegistration(client);
 }
 
-
 void	Server::process_buffer(int client_fd)
 {
-	auto	client_it = _clients_by_fd.find(client_fd);
+	auto	map_it = _clients_by_fd.find(client_fd);
 
-	if (client_it == end(_clients_by_fd))
+	if (map_it == end(_clients_by_fd))
 		return;
 
-	Client	&client = *(client_it->second);
+	Client	&client = *(map_it->second);
 	std::string	message(client.get_message());
 
 	while (message.size() > 0)
@@ -101,7 +100,7 @@ void	Server::process_buffer(int client_fd)
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
-		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
+		dispatch(client, command);
 		message = client.get_message();
 	}
 }
@@ -127,11 +126,17 @@ void	Server::wait_incoming(void)
 	{
 		if (events[i].data.fd == _socketfd)
 		{
-			int	client_fd = accept(_socketfd, (struct sockaddr*) &_serverAddr, &_addrLen);
+			sockaddr_in	peerAddr{};
+			socklen_t	peerLen = sizeof(peerAddr);
+			int	client_fd = accept(_socketfd, (struct sockaddr*) &peerAddr, &peerLen);
 			Client	new_client(client_fd);
 
 			if (client_fd < 0)
 				this->stop("accept() syscall failed");
+
+			char	host[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr)
+				new_client.set_host(host);
 
 			set_nonblock(client_fd);
 
@@ -153,35 +158,37 @@ void	Server::wait_incoming(void)
 		}
 		else if (events[i].events & EPOLLIN)
 		{
-			try {
-				Client	&client = *(_clients_by_fd.at(events[i].data.fd));
-				char	received[1024]{};
-				ssize_t	n = recv(events[i].data.fd, &received, 1024, 0);
+			auto map_it = _clients_by_fd.find(events[i].data.fd);
 
-				while (n > 0)
-				{
-					client.add_buffer(received);
-					n = recv(events[i].data.fd, &received, 1024, 0);
-				}
-				if (n == 0)
-				{
-					std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
-					epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-					erase_client(events[i].data.fd);
-					continue;
-				}
-				if (n < 0 && errno != EAGAIN)
-				{
-					std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
-					Server::stop(nullptr);
-				}
-				process_buffer(events[i].data.fd);
-			}
-			catch (std::out_of_range &ex)
+			if (map_it == end(_clients_by_fd))
 			{
-				std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
+				std::cout << "[" << events[i].data.fd << "]" << " Unable to find client in map" << std::endl;
 				close(events[i].data.fd);
+				continue;
 			}
+
+			Client	&client = *(map_it->second);
+			char	received[1024]{};
+			ssize_t	n = recv(events[i].data.fd, &received, 1024, 0);
+
+			while (n > 0)
+			{
+				client.add_buffer(received);
+				n = recv(events[i].data.fd, &received, 1024, 0);
+			}
+			if (n == 0)
+			{
+				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
+				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+				erase_client(events[i].data.fd);
+				continue;
+			}
+			if (n < 0 && errno != EAGAIN)
+			{
+				std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
+				Server::stop(nullptr);
+			}
+			process_buffer(events[i].data.fd);
 		}
 	}
 }
@@ -203,11 +210,12 @@ void	Server::erase_client(int fd)
 	if (map_it == end(_clients_by_fd))
 		return;
 
-	auto client_it = map_it->second;
-
+	Client	&client = *(map_it->second);
+	
+	handleCleanup(client); // now it gets cleansed here
 	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(client_it->get_nickname());
-	_clients.erase(client_it);
+	_clients_by_nickname.erase(client.get_nickname());
+	_clients.erase(map_it->second);
 }
 
 void	Server::start()
@@ -217,7 +225,12 @@ void	Server::start()
 		this->stop("socket() syscall failed");
 	if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0)
 		this->stop("Failed to set socket option");
-	if (bind(_socketfd, (struct sockaddr*) &_serverAddr, _addrLen) < 0)
+
+	sockaddr_in	serverAddr{};
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_port = _port;
+	serverAddr.sin_addr.s_addr = INADDR_ANY;
+	if (bind(_socketfd, (struct sockaddr*) &serverAddr, sizeof(serverAddr)) < 0)
 		this->stop("bind() syscall failed");
 	if (listen(_socketfd, S_MAX_PENDING) < 0)
 		this->stop("listen() syscall failed");
@@ -244,13 +257,18 @@ void	Server::stop(const char *message)
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
+	// Set _epollfd and _socketfd back to -1 after close, so a later stop() does not close them again.
 	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);
 		close(_epollfd);
+		_epollfd = -1;
 	}
 	if (_socketfd > 0)
+	{
 		close(_socketfd);
+		_socketfd = -1;
+	}
 
 	if (message)
 		throw IRCException(message);

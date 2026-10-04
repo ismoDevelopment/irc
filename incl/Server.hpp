@@ -1,6 +1,6 @@
 #pragma once
 
-#include <signal.h>
+#include <cstdlib>
 #include <cstdint>
 #include <sys/epoll.h>
 #include <fcntl.h>
@@ -9,7 +9,6 @@
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
-#include <map>
 #include <map>
 #include <string_view>
 #include <stdexcept>
@@ -24,20 +23,22 @@
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
 
-typedef std::list<Client> t_clients;
 class Server {
 	private:
+		typedef std::list<Client> t_clients;
+		typedef void (Server::*CommandHandler)(Client &, const ParsedCommand &);
+
 		int									_epollfd;
 		int									_socketfd;
 		int									_reuse_addr_value;
-		sockaddr_in							_serverAddr;
-		socklen_t							_addrLen;
 		uint16_t							_port;
 		std::string							_password;
+		std::string							_hostname;
 		t_clients							_clients;
 		std::map<int, t_clients::iterator>	_clients_by_fd;
 		std::map<std::string, Client *>		_clients_by_nickname;
 		std::map<std::string, Channel *>	_channels_by_name;
+		std::map<std::string, CommandHandler> _commands_map;
 		void	wait_incoming(void);
 		void	process_buffer(int client_fd);
 		static bool							_interrupted;
@@ -45,9 +46,26 @@ class Server {
 	public:
 		Server(uint16_t port, std::string password);
 
-		void	start(void);
-		void	stop(const char *message);
-		void	add_client(Client &client);
-		void	erase_client(int fd);
+		std::string	get_hostname(void) const;
+		void		start(void);
+		void		stop(const char *message);
+		void		add_client(Client &client);
+		void		erase_client(int fd);
 		static void	sigint_handler(int);
+		void		checkRegistration(Client &client);
+		void 		dispatch(Client& client, const ParsedCommand& cmd);
+		void 		handleNick(Client &client, const ParsedCommand &cmd);
+		void 		handlePass(Client &client, const ParsedCommand &cmd);
+		void 		handleUser(Client &client, const ParsedCommand &cmd);
+		void 		handlePrivmsg(Client &sender, const ParsedCommand &cmd);
+		void 		handleNotice(Client &sender, const ParsedCommand &cmd);
+		void 		handleJoin(Client &client, const ParsedCommand &cmd);
+		void 		handlePart(Client &client, const ParsedCommand &cmd);
+		void 		handleTopic(Client &client, const ParsedCommand &cmd);
+		void 		handleInvite(Client &client, const ParsedCommand &cmd);
+		void 		handleKick(Client &client, const ParsedCommand &cmd);
+		void 		handleMode(Client &client, const ParsedCommand &cmd);
+		void 		handlePing(Client &client, const ParsedCommand &cmd);
+		void 		handleQuit(Client &client, const ParsedCommand&);
+		void 		handleCleanup(Client &client);
 };

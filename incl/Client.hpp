@@ -28,11 +28,13 @@ class Client {
 		Client(int fd);
 		void	set_nickname(std::string nickname);
 		void	set_username(std::string username);
+		void	set_host(std::string host);
 		void	set_password(void);
 		bool 	hasWelcomed() const;
 		void 	setWelcomed(void);
 		std::string	get_nickname(void) const;
 		std::string	get_username(void) const;
+		std::string	get_prefix(void) const;
 		int		get_fd(void) const;
 		bool	is_registered() const;
 		void	add_buffer(std::string received);

@@ -1,94 +1,100 @@
-#include "Commands.hpp"
+#include "Server.hpp"
 
-void checkRegistration(Client &client)
+void Server::checkRegistration(Client &client)
 {
 	if (client.is_registered() && !client.hasWelcomed())
 	{
-		client.write_to_client("001 " + client.get_nickname() + " :Welcome to the IRC server!\r\n");
+		client.write_to_client(":" + _hostname + " 001 " + client.get_nickname() + " :Welcome to the IRC server!\r\n");
 		client.setWelcomed();
 	}
 }
 
-void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick)
+void Server::handleNick(Client& client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client(ERR_NONICKNAMEGIVEN(client.get_nickname()));
+		client.write_to_client(ERR_NONICKNAMEGIVEN(_hostname, client.get_nickname()));
 		return;
 	}
 
 	const std::string &newNick = cmd.params[0];
 
-	std::map<std::string, Client*>::iterator it = clientsByNick.find(newNick);
-	if (it != clientsByNick.end() && it->second != &client)
+	std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(newNick);
+	if (it != _clients_by_nickname.end() && it->second != &client)
 	{
-		client.write_to_client(ERR_NICKNAMEINUSE(client.get_nickname(), newNick));
+		client.write_to_client(ERR_NICKNAMEINUSE(_hostname, client.get_nickname(), newNick));
 		return;
 	}
 
 	std::string oldNick = client.get_nickname();
 	if (!oldNick.empty())
-		clientsByNick.erase(oldNick);
+		_clients_by_nickname.erase(oldNick);
 
+	// TODO: optional, but recommended. After a nick change, broadcast
+	// ":oldprefix NICK newnick" to this client and to everyone who shares a
+	// channel with them. Clients such as irssi only rename the user when they
+	// receive that line, so /nick otherwise keeps the old name in the status
+	// bar and channel list while later messages arrive from the new nick.
+	// Capture the prefix before set_nickname(), since get_prefix() uses the current nick.
 	client.set_nickname(newNick);
-	clientsByNick[newNick] = &client;
+	_clients_by_nickname[newNick] = &client;
 
 	checkRegistration(client);
 }
 
-void handlePass(Client &client, const ParsedCommand &cmd, const std::string &serverPass)
+void Server::handlePass(Client &client, const ParsedCommand &cmd)
 {
 	if (client.is_registered())
 	{
-		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));
+		client.write_to_client(ERR_ALREADYREGISTRED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PASS"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "PASS"));
 		return;
 	}
 
-	if (cmd.params[0] != serverPass)
+	if (cmd.params[0] != _password)
 	{
-		client.write_to_client(ERR_PASSWDMISMATCH(client.get_nickname()));
+		client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
 		return;
 	}
 
 	client.set_password();
-	checkRegistration(client);
+	checkRegistration(client);;
 }
 
-void handleUser(Client &client, const ParsedCommand &cmd)
+void Server::handleUser(Client &client, const ParsedCommand &cmd)
 {
 	if (client.is_registered())
 	{
-		client.write_to_client(ERR_ALREADYREGISTRED(client.get_nickname()));
+		client.write_to_client(ERR_ALREADYREGISTRED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 4)
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "USER"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "USER"));
 		return;
 	}
 
 	client.set_username(cmd.params[0]);
-	checkRegistration(client);
+	checkRegistration(client);;
 }
 
-void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::string, Client*>& clientsByNick, std::map<std::string, Channel*>& channelsByName)
+void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)
 {
 	if (!sender.is_registered())
 	{
-		sender.write_to_client(ERR_NOTREGISTERED(sender.get_nickname()));
+		sender.write_to_client(ERR_NOTREGISTERED(_hostname, sender.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		sender.write_to_client(ERR_NEEDMOREPARAMS(sender.get_nickname(), "PRIVMSG"));
+		sender.write_to_client(ERR_NEEDMOREPARAMS(_hostname, sender.get_nickname(), "PRIVMSG"));
 		return;
 	}
 
@@ -97,36 +103,36 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = channelsByName.find(target);
-		if (it == channelsByName.end())
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(target);
+		if (it == _channels_by_name.end())
 		{
-			sender.write_to_client(ERR_NOSUCHCHANNEL(sender.get_nickname(), target));
+			sender.write_to_client(ERR_NOSUCHCHANNEL(_hostname, sender.get_nickname(), target));
 			return;
 		}
 
 		Channel *channel = it->second;
 		if (!channel->hasMember(&sender))
 		{
-			sender.write_to_client(ERR_CANNOTSENDTOCHAN(sender.get_nickname(), target));
+			sender.write_to_client(ERR_CANNOTSENDTOCHAN(_hostname, sender.get_nickname(), target));
 			return;
 		}
-		channel->broadcastMessage(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
+		channel->broadcastMessage(":" + sender.get_prefix() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
 	}
 	else
 	{
-		std::map<std::string, Client*>::iterator it = clientsByNick.find(target);
-		if (it == clientsByNick.end())
+		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(target);
+		if (it == _clients_by_nickname.end())
 		{
-			sender.write_to_client(ERR_NOSUCHNICK(sender.get_nickname(), target));
+			sender.write_to_client(ERR_NOSUCHNICK(_hostname, sender.get_nickname(), target));
 			return;
 		}
 
-		it->second->write_to_client(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n");
+		it->second->write_to_client(":" + sender.get_prefix() + " PRIVMSG " + target + " :" + message + "\r\n");
 	}
 
 }
 
-void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string, Client*>& clientsByNick, std::map<std::string, Channel*>& channelsByName)
+void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 {
 	if (!sender.is_registered())
 		return;
@@ -139,63 +145,60 @@ void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = channelsByName.find(target);
-		if (it == channelsByName.end())
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(target);
+		if (it == _channels_by_name.end())
 			return;
 
 		Channel *channel = it->second;
 		if (!channel->hasMember(&sender))
 			return;
 
-		channel->broadcastMessage(":" + sender.get_nickname() + " NOTICE " + target + " :" + message + "\r\n", &sender);
+		channel->broadcastMessage(":" + sender.get_prefix() + " NOTICE " + target + " :" + message + "\r\n", &sender);
 	}
 	else
 	{
-		std::map<std::string, Client*>::iterator it = clientsByNick.find(target);
-		if (it == clientsByNick.end())
+		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(target);
+		if (it == _clients_by_nickname.end())
 			return;
 
-		it->second->write_to_client(":" + sender.get_nickname() + " NOTICE " + target + " :" + message + "\r\n");
+		it->second->write_to_client(":" + sender.get_prefix() + " NOTICE " + target + " :" + message + "\r\n");
 	}
 }
 
-void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "JOIN"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "JOIN"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
 	Channel *channel;
-	bool isNewChannel = (it == channelsByName.end());
+	bool isNewChannel = (it == _channels_by_name.end());
 
 	if (isNewChannel)
 	{
 		channel = new Channel(channelName);
-		channelsByName[channelName] = channel;
+		_channels_by_name[channelName] = channel;
 	}
 	else
 		channel = it->second;
 
-	// this should not be a reply for JOIN command
 	if (channel->hasMember(&client))
-	{
 		return;
-	}
 
 	if (channel->isInviteOnly() && !channel->isInvited(&client))
 	{
-		client.write_to_client(ERR_INVITEONLYCHAN(client.get_nickname(), channelName));
+		client.write_to_client(ERR_INVITEONLYCHAN(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -207,14 +210,14 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 		if (pass != channel->getPassword())
 		{
-			client.write_to_client(ERR_BADCHANNELKEY(client.get_nickname(), channelName));
+			client.write_to_client(ERR_BADCHANNELKEY(_hostname, client.get_nickname(), channelName));
 			return;
 		}
 	}
 
 	if (channel->hasUserLimit() && channel->getMemberCount() >= channel->getUserLimit())
 	{
-		client.write_to_client(ERR_CHANNELISFULL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_CHANNELISFULL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -222,63 +225,63 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	if (isNewChannel)
 		channel->addOperator(&client);
 
-	channel->broadcastMessage(":" + client.get_nickname() + " JOIN " + channelName + "\r\n");
+	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
 }
 
-void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+void Server::handlePart(Client &client, const ParsedCommand &cmd)
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "PART"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "PART"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
-	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
 
-	if (it == channelsByName.end() || !it->second->hasMember(&client))
+	if (it == _channels_by_name.end() || !it->second->hasMember(&client))
 	{
-		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = it->second;
-	channel->broadcastMessage(":" + client.get_nickname() + " PART " + channelName + "\r\n", NULL);
+	channel->broadcastMessage(":" + client.get_prefix() + " PART " + channelName + "\r\n", NULL);
 	channel->removeMember(&client);
 
 	if (channel->isEmpty())
 	{
 		delete channel;
-		channelsByName.erase(it);
+		_channels_by_name.erase(it);
 	}
 }
 
-void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "TOPIC"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "TOPIC"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
-	if (it == channelsByName.end())
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	if (it == _channels_by_name.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -286,194 +289,193 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client("331 " + channelName + " :No topic is set\r\n");
+			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname()));
 		else
-			client.write_to_client("332 " + channelName + " :" + channel->getTopic() + "\r\n");
+			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getTopic()));
 		return;
 	}
 
 	if (channel->isTopicLocked() && !channel->isOperator(&client))
 	{
-		client.write_to_client(ERR_CHANOPRIVSNEEDED(client.get_nickname(), channelName));
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	const std::string &newTopic = cmd.params[1];
 	channel->setTopic(newTopic);
-	channel->broadcastMessage(":" + client.get_nickname() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
+	channel->broadcastMessage(":" + client.get_prefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
 }
 
-void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "INVITE"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "INVITE"));
 		return;
 	}
 
 	const std::string &targetNick = cmd.params[0];
 	const std::string &channelName = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator itChannel = channelsByName.find(channelName);
-	if (itChannel == channelsByName.end())
+	std::map<std::string, Channel*>::iterator itChannel = _channels_by_name.find(channelName);
+	if (itChannel == _channels_by_name.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = itChannel->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client(ERR_CHANOPRIVSNEEDED(client.get_nickname(), channelName));
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
-	std::map<std::string, Client*>::iterator itClient = clientsByNick.find(targetNick);
-	if (itClient == clientsByNick.end())
+	std::map<std::string, Client*>::iterator itClient = _clients_by_nickname.find(targetNick);
+	if (itClient == _clients_by_nickname.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), targetNick));
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
 
 	Client *targetClient = itClient->second;
 	if (channel->hasMember(targetClient))
 	{
-		client.write_to_client(ERR_USERONCHANNEL(client.get_nickname(), targetNick, channelName));
+		client.write_to_client(ERR_USERONCHANNEL(_hostname, client.get_nickname(), targetNick, channelName));
 		return;
 	}
 
 	channel->addInvited(targetClient);
 
-	client.write_to_client("341 " + targetNick + " " + channelName + "\r\n");
-	targetClient->write_to_client(":" + client.get_nickname() + " INVITE " + targetNick + " " + channelName + "\r\n");
+	client.write_to_client(":" + _hostname + " 341 " + client.get_nickname() + " " + targetNick + " " + channelName + "\r\n");
+	targetClient->write_to_client(":" + client.get_prefix() + " INVITE " + targetNick + " " + channelName + "\r\n");
 }
 
-void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleKick(Client &client, const ParsedCommand &cmd)
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "KICK"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "KICK"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 	const std::string &targetNick = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
-	if (chIt == channelsByName.end())
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(channelName);
+	if (chIt == _channels_by_name.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client(ERR_CHANOPRIVSNEEDED(client.get_nickname(), channelName));
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
-	std::map<std::string, Client*>::iterator userIt = clientsByNick.find(targetNick);
-	if (userIt == clientsByNick.end())
+	std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(targetNick);
+	if (userIt == _clients_by_nickname.end())
 	{
-		client.write_to_client(ERR_NOSUCHNICK(client.get_nickname(), targetNick));
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
 
 	Client *targetClient = userIt->second;
 	if (!channel->hasMember(targetClient))
 	{
-		client.write_to_client("441 " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+		client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
 		return;
 	}
 
 	if (cmd.params.size() >= 3)
 	{
 		const std::string &reason = cmd.params[2];
-		channel->broadcastMessage(":" + client.get_nickname() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n", NULL);
+		channel->broadcastMessage(":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n", NULL);
 	}
 	else
-		channel->broadcastMessage(":" + client.get_nickname() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
+		channel->broadcastMessage(":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
 
 	channel->removeMember(targetClient);
 	if (channel->isEmpty())
 	{
 		delete channel;
-		channelsByName.erase(chIt);
+		_channels_by_name.erase(chIt);
 	}
 }
 
-void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleMode(Client &client, const ParsedCommand &cmd)
 {
 	if (!client.is_registered())
 	{
-		client.write_to_client(ERR_NOTREGISTERED(client.get_nickname()));
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
-	if (chIt == channelsByName.end())
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(channelName);
+	if (chIt == _channels_by_name.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client(ERR_NOTONCHANNEL(client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 		return;
 	}
 
-
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -526,7 +528,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 				{
 					if (index >= cmd.params.size())
 					{
-						client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
+						client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 						break;
 					}
 					channel->setPassword(cmd.params[index]);
@@ -546,16 +548,16 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 			{
 				if (index >= cmd.params.size())
 				{
-					client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
+					client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 					break;
 				}
 				const std::string &targetNick = cmd.params[index];
 				index++;
 
-				std::map<std::string, Client*>::iterator userIt = clientsByNick.find(targetNick);
-				if (userIt == clientsByNick.end() || !channel->hasMember(userIt->second))
+				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(targetNick);
+				if (userIt == _clients_by_nickname.end() || !channel->hasMember(userIt->second))
 				{
-					client.write_to_client("441 " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+					client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
 					break;
 				}
 
@@ -580,7 +582,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 				{
 					if (index >= cmd.params.size())
 					{
-						client.write_to_client(ERR_NEEDMOREPARAMS(client.get_nickname(), "MODE"));
+						client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 						break;
 					}
 
@@ -602,7 +604,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 			}
 			default:
 			{
-				client.write_to_client(ERR_UNKNOWNMODE(client.get_nickname(), std::string(1, c)));
+				client.write_to_client(ERR_UNKNOWNMODE(_hostname, client.get_nickname(), std::string(1, c)));
 				break;
 			}
 		}
@@ -610,16 +612,16 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 	if (!appliedFlags.empty())
 	{
-		std::string confirm = ":" + client.get_nickname() + " MODE " + channelName + " " + appliedFlags;
+		std::string confirm = ":" + client.get_prefix() + " MODE " + channelName + " " + appliedFlags;
 		for (size_t i = 0; i < appliedParams.size(); i++)
 			confirm += " " + appliedParams[i];
 		channel->broadcastMessage(confirm + "\r\n", NULL);
 	}
 }
 
-void handleCleanup(Client &client, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleCleanup(Client &client)
 {
-	for (std::map<std::string, Channel*>::iterator it = channelsByName.begin(); it != channelsByName.end(); )
+	for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); )
 	{
 		Channel *channel = it->second;
 		if (channel->hasMember(&client))
@@ -628,7 +630,7 @@ void handleCleanup(Client &client, std::map<std::string, Client*> &clientsByNick
 		if (channel->isEmpty())
 		{
 			delete channel;
-			channelsByName.erase(it++);
+			_channels_by_name.erase(it++);
 		}
 		else
 			++it;
@@ -636,10 +638,10 @@ void handleCleanup(Client &client, std::map<std::string, Client*> &clientsByNick
 
 	std::string nick = client.get_nickname();
 	if (!nick.empty())
-		clientsByNick.erase(nick);
+		_clients_by_nickname.erase(nick);
 }
 
-void handleQuit(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleQuit(Client &client, const ParsedCommand &cmd)
 {
 	std::string reason;
 	if (cmd.params.size() >= 1)
@@ -647,24 +649,24 @@ void handleQuit(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	else
 		reason = "I go";
 
-	for (std::map<std::string, Channel*>::iterator it = channelsByName.begin(); it != channelsByName.end(); ++it)
+	for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); ++it)
 	{
 		Channel *channel = it->second;
 		if (channel->hasMember(&client))
-			channel->broadcastMessage(":" + client.get_nickname() + " QUIT :" + reason + "\r\n", &client);
+			channel->broadcastMessage(":" + client.get_prefix() + " QUIT :" + reason + "\r\n", &client);
 	}
 
-	handleCleanup(client, clientsByNick, channelsByName);
+	handleCleanup(client);
 }
 
-void handlePing(Client &client, const ParsedCommand &cmd)
+void Server::handlePing(Client &client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client("409 :No origin specified\r\n");
+		client.write_to_client(":" + _hostname + " 409 " + client.get_nickname() + " :No origin specified\r\n");
 		return;
 	}
 
-	const std::string &server = cmd.params[0];
-	client.write_to_client("PONG " + server + "\r\n");
+	const std::string &token = cmd.params[0];
+	client.write_to_client(":" + _hostname + " PONG " + _hostname + " :" + token + "\r\n");
 }
