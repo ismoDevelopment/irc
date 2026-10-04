@@ -79,7 +79,13 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
 	auto	cmd_it = _commands_map.find(cmd.command);
 
 	if (cmd_it == end(_commands_map))
-		client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
+		client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");\
+	else if (!client.is_registered() && 
+		cmd.command != "USER" &&
+		cmd.command != "NICK" &&
+		cmd.command != "PASS" &&
+		cmd.command != "NOTICE")
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 	else
 		(this->*(cmd_it->second))(client, cmd);
     checkRegistration(client);

@@ -86,12 +86,6 @@ void Server::handleUser(Client &client, const ParsedCommand &cmd)
 
 void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)
 {
-	if (!sender.is_registered())
-	{
-		sender.write_to_client(ERR_NOTREGISTERED(_hostname, sender.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
 		sender.write_to_client(ERR_NEEDMOREPARAMS(_hostname, sender.get_nickname(), "PRIVMSG"));
@@ -167,12 +161,6 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 
 void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "JOIN"));
@@ -230,12 +218,6 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 
 void Server::handlePart(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "PART"));
@@ -264,12 +246,6 @@ void Server::handlePart(Client &client, const ParsedCommand &cmd)
 
 void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "TOPIC"));
@@ -315,12 +291,6 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 
 void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "INVITE"));
@@ -372,12 +342,6 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 
 void Server::handleKick(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "KICK"));
@@ -439,12 +403,6 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 
 void Server::handleMode(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
