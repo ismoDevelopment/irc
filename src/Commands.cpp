@@ -19,6 +19,12 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 
 	const std::string &newNick = cmd.params[0];
 
+	if (!is_valid_nick(cmd.params[0]))
+	{
+		client.write_to_client(ERR_ERRONEUSNICKNAME(_hostname, client.get_nickname(), newNick));
+		return;
+	}
+
 	std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(newNick);
 	if (it != _clients_by_nickname.end() && it->second != &client)
 	{

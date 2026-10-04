@@ -16,7 +16,6 @@ Server::Server(uint16_t port, std::string password)
 	_reuse_addr_value = 1;
 	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
 		_hostname = hostname;
-	
 	_commands_map["NICK"]    = &Server::handleNick;
 	_commands_map["PASS"]    = &Server::handlePass;
 	_commands_map["PRIVMSG"] = &Server::handlePrivmsg;
@@ -67,7 +66,6 @@ static ParsedCommand parseLine(const std::string& line)
     {
 		return cmd;
 	}
-	cmd.prefix = "localhost";
     cmd.command = tokens[0];
     for (size_t i = 1; i < tokens.size(); i++)
         cmd.params.push_back(tokens[i]);

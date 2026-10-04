@@ -17,3 +17,4 @@ class IRCException : public std::exception
 
 uint16_t	convert_to_port(const char *str);
 void		set_nonblock(int fd);
+bool		is_valid_nick(const std::string &nick);
