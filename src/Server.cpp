@@ -74,12 +74,24 @@ static ParsedCommand parseLine(const std::string& line)
     return cmd;
 }
 
+bool Server::needs_register(std::string command) const
+{
+	return (command != "USER" &&
+	command != "NICK" &&
+	command != "PASS" &&
+	command != "NOTICE" &&
+	command != "PING" &&
+	command != "QUIT");
+}
+
 void Server::dispatch(Client& client, const ParsedCommand& cmd)
 {
 	auto	cmd_it = _commands_map.find(cmd.command);
 
 	if (cmd_it == end(_commands_map))
-		client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");
+		client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " + cmd.command + " :Unknown command\r\n");\
+	else if (!client.is_registered() && needs_register(cmd.command))
+		client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
 	else
 		(this->*(cmd_it->second))(client, cmd);
     checkRegistration(client);

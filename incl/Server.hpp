@@ -48,6 +48,7 @@ class Server {
 		Server(uint16_t port, std::string password);
 
 		std::string	get_hostname(void) const;
+		bool		needs_register(std::string command) const;
 		void		start(void);
 		void		stop(const char *message);
 		void		add_client(Client &client);
