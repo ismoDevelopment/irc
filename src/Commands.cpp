@@ -179,7 +179,9 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 
 	if ((channelName.front() != '#' && channelName.front() != '&') || 
 		channelName.size() < 2 || 
-		CHANNEL_NAME_FORBIDDEN_FIRST.find(channelName.front()) != channelName.npos || channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || channelName.size() > MAX_CHANNEL_NAME_SIZE)
+		CHANNEL_NAME_FORBIDDEN_FIRST.find(channelName.front()) != channelName.npos || 
+		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || 
+		channelName.size() > MAX)
 	{
 		client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
 		return;
