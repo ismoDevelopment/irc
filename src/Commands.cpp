@@ -38,7 +38,7 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 	std::string oldNick = client.get_nickname();
 
 	if (!oldNick.empty())
-		_clients_by_nickname.erase(oldNick);
+		_clients_by_nickname.erase(to_IRClower(oldNick));
 
 	// TODO: optional, but recommended. After a nick change, broadcast
 	// ":oldprefix NICK newnick" to this client and to everyone who shares a
@@ -621,7 +621,7 @@ void Server::handleCleanup(Client &client)
 
 	std::string nick = client.get_nickname();
 	if (!nick.empty())
-		_clients_by_nickname.erase(nick);
+		_clients_by_nickname.erase(to_IRClower(nick));
 }
 
 void Server::handleQuit(Client &client, const ParsedCommand &cmd)

@@ -224,7 +224,7 @@ void	Server::erase_client(int fd)
 	
 	handleCleanup(client);
 	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(client.get_nickname());
+	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));
 	_clients.erase(map_it->second);
 }
 
