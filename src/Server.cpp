@@ -72,7 +72,7 @@ static ParsedCommand parseLine(const std::string& line)
     return cmd;
 }
 
-bool Server::needs_register(std::string command) const
+bool	Server::needs_register(const std::string &command) const
 {
 	return (command != "USER" &&
 	command != "NICK" &&
@@ -267,7 +267,6 @@ void	Server::stop(const char *message)
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
-	// Set _epollfd and _socketfd back to -1 after close, so a later stop() does not close them again.
 	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);

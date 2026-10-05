@@ -19,7 +19,9 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 
 	const std::string &newNick = cmd.params[0];
 
-	if (!is_valid_nick(cmd.params[0]))
+	if (NICKNAME_FORBIDDEN_FIRST.find(newNick.front()) != newNick.npos ||
+		newNick.find_first_of(NICKNAME_FORBIDDEN) != newNick.npos || 
+		newNick.size() > MAX_NICK_SIZE)
 	{
 		client.write_to_client(ERR_ERRONEUSNICKNAME(_hostname, client.get_nickname(), newNick));
 		return;
@@ -175,6 +177,14 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
+	if ((channelName.front() != '#' && channelName.front() != '&') || 
+		channelName.size() < 2 || 
+		CHANNEL_NAME_FORBIDDEN_FIRST.find(channelName.front()) != channelName.npos || channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || channelName.size() > MAX_NICK_SIZE)
+	{
+		client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
+		return;
+	}
+
 	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
 	Channel *channel;
 	bool isNewChannel = (it == _channels_by_name.end());
@@ -219,6 +229,10 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 	if (isNewChannel)
 		channel->addOperator(&client);
 
+	if (channel->getTopic().empty())
+		client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
+	else
+		client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
 	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
 }
 
@@ -278,9 +292,9 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname()));
+			client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
 		else
-			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getTopic()));
+			client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
 		return;
 	}
 

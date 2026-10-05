@@ -23,8 +23,3 @@ void	set_nonblock(int fd)
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
 		throw IRCException("fcntl() syscall failed");
 }
-
-bool	is_valid_nick(const std::string &nick)
-{
-	return (nick.front() != '$' && nick.front() != ':' && nick.find_first_of(" ,*?!@.") == nick.npos && nick.size() <= 9);
-}

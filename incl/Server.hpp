@@ -23,6 +23,8 @@
 
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
+#define MAX_NICK_SIZE 5
+#define MAX_CHANNEL_NAME_SIZE 50
 
 class Server {
 	private:
@@ -43,17 +45,20 @@ class Server {
 		void	wait_incoming(void);
 		void	process_buffer(int client_fd);
 		static bool							_interrupted;
+		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN = " ,\a";
+		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN_FIRST = "$:+%~";
+		static constexpr std::string_view	NICKNAME_FORBIDDEN = " ,*? !@";
+		static constexpr std::string_view	NICKNAME_FORBIDDEN_FIRST = "$:#&+%~";
 
 	public:
 		Server(uint16_t port, std::string password);
 
 		std::string	get_hostname(void) const;
-		bool		needs_register(std::string command) const;
+		bool		needs_register(const std::string &command) const;
 		void		start(void);
 		void		stop(const char *message);
 		void		add_client(Client &client);
 		void		erase_client(int fd);
-		static void	sigint_handler(int);
 		void		checkRegistration(Client &client);
 		void 		dispatch(Client& client, const ParsedCommand& cmd);
 		void 		handleNick(Client &client, const ParsedCommand &cmd);
@@ -70,4 +75,6 @@ class Server {
 		void 		handlePing(Client &client, const ParsedCommand &cmd);
 		void 		handleQuit(Client &client, const ParsedCommand&);
 		void 		handleCleanup(Client &client);
+
+		static void	sigint_handler(int);
 };
