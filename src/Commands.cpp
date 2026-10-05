@@ -181,7 +181,7 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 		channelName.size() < 2 || 
 		CHANNEL_NAME_FORBIDDEN_FIRST.find(channelName.front()) != channelName.npos || 
 		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || 
-		channelName.size() > MAX)
+		channelName.size() > MAX_CHANNEL_NAME_SIZE)
 	{
 		client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
 		return;
