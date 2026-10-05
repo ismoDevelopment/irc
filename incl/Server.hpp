@@ -23,7 +23,7 @@
 
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
-#define MAX_NICK_SIZE 5
+#define MAX_NICK_SIZE 9
 #define MAX_CHANNEL_NAME_SIZE 50
 
 class Server {

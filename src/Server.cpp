@@ -75,11 +75,11 @@ static ParsedCommand parseLine(const std::string& line)
 bool	Server::needs_register(const std::string &command) const
 {
 	return (command != "USER" &&
-	command != "NICK" &&
-	command != "PASS" &&
-	command != "NOTICE" &&
-	command != "PING" &&
-	command != "QUIT");
+		command != "NICK" &&
+		command != "PASS" &&
+		command != "NOTICE" &&
+		command != "PING" &&
+		command != "QUIT");
 }
 
 void Server::dispatch(Client& client, const ParsedCommand& cmd)
@@ -222,7 +222,7 @@ void	Server::erase_client(int fd)
 
 	Client	&client = *(map_it->second);
 	
-	handleCleanup(client); // now it gets cleansed here
+	handleCleanup(client);
 	_clients_by_fd.erase(fd);
 	_clients_by_nickname.erase(client.get_nickname());
 	_clients.erase(map_it->second);
