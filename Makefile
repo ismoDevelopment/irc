@@ -22,7 +22,6 @@ clean:
 	$(RM) $(OBJS)
 	$(RM) $(DEPS)
 	$(RM) -r $(TMP_DIR)
-	echo $(DEPS)
 
 fclean: clean
 	$(RM) $(NAME)
