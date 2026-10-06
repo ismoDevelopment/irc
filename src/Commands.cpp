@@ -90,7 +90,7 @@ void Server::handleUser(Client &client, const ParsedCommand &cmd)
 		return;
 	}
 
-	client.set_username(cmd.params[0]);
+	client.set_username(sanitize_username(cmd.params[0], USERNAME_FORBIDDEN, MAX_USERNAME_SIZE));
 	checkRegistration(client);;
 }
 
