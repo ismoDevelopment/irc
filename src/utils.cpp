@@ -23,3 +23,25 @@ void	set_nonblock(int fd)
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
 		throw IRCException("fcntl() syscall failed");
 }
+
+std::string to_IRClower(std::string str)
+{
+	for (auto it = begin(str); it < end(str); it++)
+	{
+		switch (*it)
+		{
+			case '[':
+				*it = '{';
+				break;
+			case ']':
+				*it = '}';
+				break;
+			case '\\':
+				*it = '|';
+				break;
+			default:
+				*it = tolower(*it);
+		}
+	}
+	return (str);
+}

@@ -19,7 +19,16 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 
 	const std::string &newNick = cmd.params[0];
 
-	std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(newNick);
+	if (NICKNAME_FORBIDDEN_FIRST.find(newNick.front()) != newNick.npos ||
+		newNick.find_first_of(NICKNAME_FORBIDDEN) != newNick.npos || 
+		newNick.size() > MAX_NICK_SIZE)
+	{
+		client.write_to_client(ERR_ERRONEUSNICKNAME(_hostname, client.get_nickname(), newNick));
+		return;
+	}
+
+	std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(to_IRClower(newNick));
+
 	if (it != _clients_by_nickname.end() && it->second != &client)
 	{
 		client.write_to_client(ERR_NICKNAMEINUSE(_hostname, client.get_nickname(), newNick));
@@ -27,8 +36,9 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 	}
 
 	std::string oldNick = client.get_nickname();
+
 	if (!oldNick.empty())
-		_clients_by_nickname.erase(oldNick);
+		_clients_by_nickname.erase(to_IRClower(oldNick));
 
 	// TODO: optional, but recommended. After a nick change, broadcast
 	// ":oldprefix NICK newnick" to this client and to everyone who shares a
@@ -37,7 +47,7 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 	// bar and channel list while later messages arrive from the new nick.
 	// Capture the prefix before set_nickname(), since get_prefix() uses the current nick.
 	client.set_nickname(newNick);
-	_clients_by_nickname[newNick] = &client;
+	_clients_by_nickname[to_IRClower(newNick)] = &client;
 
 	checkRegistration(client);
 }
@@ -97,7 +107,7 @@ void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(target);
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(target));
 		if (it == _channels_by_name.end())
 		{
 			sender.write_to_client(ERR_NOSUCHCHANNEL(_hostname, sender.get_nickname(), target));
@@ -114,7 +124,7 @@ void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)
 	}
 	else
 	{
-		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(target);
+		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(to_IRClower(target));
 		if (it == _clients_by_nickname.end())
 		{
 			sender.write_to_client(ERR_NOSUCHNICK(_hostname, sender.get_nickname(), target));
@@ -139,7 +149,7 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(target);
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(target));
 		if (it == _channels_by_name.end())
 			return;
 
@@ -151,7 +161,7 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 	}
 	else
 	{
-		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(target);
+		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(to_IRClower(target));
 		if (it == _clients_by_nickname.end())
 			return;
 
@@ -169,14 +179,23 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	if ((channelName.front() != '#' && channelName.front() != '&') || 
+		channelName.size() < 2 || 
+		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || 
+		channelName.size() > MAX_CHANNEL_NAME_SIZE)
+	{
+		client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
+		return;
+	}
+
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 	Channel *channel;
 	bool isNewChannel = (it == _channels_by_name.end());
 
 	if (isNewChannel)
 	{
 		channel = new Channel(channelName);
-		_channels_by_name[channelName] = channel;
+		_channels_by_name[to_IRClower(channelName)] = channel;
 	}
 	else
 		channel = it->second;
@@ -214,6 +233,11 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 		channel->addOperator(&client);
 
 	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
+
+	if (channel->getTopic().empty())
+		client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
+	else
+		client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
 }
 
 void Server::handlePart(Client &client, const ParsedCommand &cmd)
@@ -225,7 +249,7 @@ void Server::handlePart(Client &client, const ParsedCommand &cmd)
 	}
 
 	const std::string &channelName = cmd.params[0];
-	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 
 	if (it == _channels_by_name.end() || !it->second->hasMember(&client))
 	{
@@ -254,7 +278,7 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 	if (it == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -272,9 +296,9 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname()));
+			client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
 		else
-			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getTopic()));
+			client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
 		return;
 	}
 
@@ -300,7 +324,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 	const std::string &targetNick = cmd.params[0];
 	const std::string &channelName = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator itChannel = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator itChannel = _channels_by_name.find(to_IRClower(channelName));
 	if (itChannel == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -320,7 +344,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 		return;
 	}
 
-	std::map<std::string, Client*>::iterator itClient = _clients_by_nickname.find(targetNick);
+	std::map<std::string, Client*>::iterator itClient = _clients_by_nickname.find(to_IRClower(targetNick));
 	if (itClient == _clients_by_nickname.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetNick));
@@ -351,7 +375,7 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 	const std::string &channelName = cmd.params[0];
 	const std::string &targetNick = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(channelName));
 	if (chIt == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -371,7 +395,7 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 		return;
 	}
 
-	std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(targetNick);
+	std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
 	if (userIt == _clients_by_nickname.end())
 	{
 		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
@@ -411,7 +435,7 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(channelName));
 	if (chIt == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -512,7 +536,7 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 				const std::string &targetNick = cmd.params[index];
 				index++;
 
-				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(targetNick);
+				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
 				if (userIt == _clients_by_nickname.end() || !channel->hasMember(userIt->second))
 				{
 					client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
@@ -596,7 +620,7 @@ void Server::handleCleanup(Client &client)
 
 	std::string nick = client.get_nickname();
 	if (!nick.empty())
-		_clients_by_nickname.erase(nick);
+		_clients_by_nickname.erase(to_IRClower(nick));
 }
 
 void Server::handleQuit(Client &client, const ParsedCommand &cmd)

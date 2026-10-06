@@ -16,7 +16,6 @@ Server::Server(uint16_t port, std::string password)
 	_reuse_addr_value = 1;
 	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
 		_hostname = hostname;
-	
 	_commands_map["NICK"]    = &Server::handleNick;
 	_commands_map["PASS"]    = &Server::handlePass;
 	_commands_map["PRIVMSG"] = &Server::handlePrivmsg;
@@ -67,21 +66,20 @@ static ParsedCommand parseLine(const std::string& line)
     {
 		return cmd;
 	}
-	cmd.prefix = "localhost";
     cmd.command = tokens[0];
     for (size_t i = 1; i < tokens.size(); i++)
         cmd.params.push_back(tokens[i]);
     return cmd;
 }
 
-bool Server::needs_register(std::string command) const
+bool	Server::needs_register(const std::string &command) const
 {
 	return (command != "USER" &&
-	command != "NICK" &&
-	command != "PASS" &&
-	command != "NOTICE" &&
-	command != "PING" &&
-	command != "QUIT");
+		command != "NICK" &&
+		command != "PASS" &&
+		command != "NOTICE" &&
+		command != "PING" &&
+		command != "QUIT");
 }
 
 void Server::dispatch(Client& client, const ParsedCommand& cmd)
@@ -224,9 +222,9 @@ void	Server::erase_client(int fd)
 
 	Client	&client = *(map_it->second);
 	
-	handleCleanup(client); // now it gets cleansed here
+	handleCleanup(client);
 	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(client.get_nickname());
+	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));
 	_clients.erase(map_it->second);
 }
 
@@ -269,7 +267,6 @@ void	Server::stop(const char *message)
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
-	// Set _epollfd and _socketfd back to -1 after close, so a later stop() does not close them again.
 	if (_epollfd > 0)
 	{
 		epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);
