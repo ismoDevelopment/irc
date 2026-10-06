@@ -46,7 +46,6 @@ class Server {
 		void	process_buffer(int client_fd);
 		static bool							_interrupted;
 		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN = " ,\a";
-		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN_FIRST = "$:+%~";
 		static constexpr std::string_view	NICKNAME_FORBIDDEN = " ,*? !@";
 		static constexpr std::string_view	NICKNAME_FORBIDDEN_FIRST = "$:#&+%~";
 

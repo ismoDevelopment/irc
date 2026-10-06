@@ -107,7 +107,7 @@ void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(target);
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(target));
 		if (it == _channels_by_name.end())
 		{
 			sender.write_to_client(ERR_NOSUCHCHANNEL(_hostname, sender.get_nickname(), target));
@@ -149,7 +149,7 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(target);
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(target));
 		if (it == _channels_by_name.end())
 			return;
 
@@ -181,7 +181,6 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 
 	if ((channelName.front() != '#' && channelName.front() != '&') || 
 		channelName.size() < 2 || 
-		CHANNEL_NAME_FORBIDDEN_FIRST.find(channelName.front()) != channelName.npos || 
 		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || 
 		channelName.size() > MAX_CHANNEL_NAME_SIZE)
 	{
@@ -189,14 +188,14 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 		return;
 	}
 
-	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 	Channel *channel;
 	bool isNewChannel = (it == _channels_by_name.end());
 
 	if (isNewChannel)
 	{
 		channel = new Channel(channelName);
-		_channels_by_name[channelName] = channel;
+		_channels_by_name[to_IRClower(channelName)] = channel;
 	}
 	else
 		channel = it->second;
@@ -250,7 +249,7 @@ void Server::handlePart(Client &client, const ParsedCommand &cmd)
 	}
 
 	const std::string &channelName = cmd.params[0];
-	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 
 	if (it == _channels_by_name.end() || !it->second->hasMember(&client))
 	{
@@ -279,7 +278,7 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 	if (it == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -325,7 +324,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 	const std::string &targetNick = cmd.params[0];
 	const std::string &channelName = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator itChannel = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator itChannel = _channels_by_name.find(to_IRClower(channelName));
 	if (itChannel == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -376,7 +375,7 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 	const std::string &channelName = cmd.params[0];
 	const std::string &targetNick = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(channelName));
 	if (chIt == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
@@ -436,7 +435,7 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(channelName);
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(channelName));
 	if (chIt == _channels_by_name.end())
 	{
 		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
