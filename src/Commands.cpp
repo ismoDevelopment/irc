@@ -11,7 +11,7 @@ void Server::checkRegistration(Client &client)
 
 void Server::handleNick(Client& client, const ParsedCommand &cmd)
 {
-	if (cmd.params.empty())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
 		client.write_to_client(ERR_NONICKNAMEGIVEN(_hostname, client.get_nickname()));
 		return;
@@ -171,7 +171,7 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 
 void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 {
-	if (cmd.params.empty())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "JOIN"));
 		return;
