@@ -11,7 +11,7 @@ void Server::checkRegistration(Client &client)
 
 void Server::handleNick(Client& client, const ParsedCommand &cmd)
 {
-	if (cmd.params.empty())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
 		client.write_to_client(ERR_NONICKNAMEGIVEN(_hostname, client.get_nickname()));
 		return;
@@ -90,7 +90,7 @@ void Server::handleUser(Client &client, const ParsedCommand &cmd)
 		return;
 	}
 
-	client.set_username(cmd.params[0]);
+	client.set_username(sanitize_username(cmd.params[0], USERNAME_FORBIDDEN, MAX_USERNAME_SIZE));
 	checkRegistration(client);;
 }
 
@@ -171,7 +171,7 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 
 void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 {
-	if (cmd.params.empty())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "JOIN"));
 		return;
@@ -347,7 +347,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 	std::map<std::string, Client*>::iterator itClient = _clients_by_nickname.find(to_IRClower(targetNick));
 	if (itClient == _clients_by_nickname.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetNick));
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
 

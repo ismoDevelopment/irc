@@ -45,3 +45,22 @@ std::string to_IRClower(std::string str)
 	}
 	return (str);
 }
+
+std::string sanitize_username(std::string username, const std::string_view forbidden_chars, size_t max_size)
+{
+	std::string sanitized;
+
+	for (std::string::iterator it = username.begin(); it != username.end(); ++it)
+	{
+		if (forbidden_chars.find(*it) == forbidden_chars.npos)
+			sanitized.push_back(*it);
+	}
+	if (sanitized.size() > max_size){
+		sanitized = sanitized.substr(0, max_size);
+	}
+	if (sanitized.empty())
+	{
+		sanitized = "user";
+	}
+	return (sanitized);
+}
