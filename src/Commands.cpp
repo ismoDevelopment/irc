@@ -347,7 +347,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 	std::map<std::string, Client*>::iterator itClient = _clients_by_nickname.find(to_IRClower(targetNick));
 	if (itClient == _clients_by_nickname.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetNick));
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
 
