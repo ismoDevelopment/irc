@@ -618,7 +618,20 @@ void Server::handleModeUser(Client &client, const ParsedCommand &cmd)
 		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
-	// TODO: handle user mode cases
+
+	if (userIt->second != &client)
+	{
+		client.write_to_client(ERR_USERSDONTMATCH(_hostname, client.get_nickname()));
+		return;
+	}
+
+	if (cmd.params.size() < 2 || cmd.params[1].empty())
+	{
+		client.write_to_client(RPL_UMODEIS(_hostname, client.get_nickname(), "+"));
+		return;
+	}
+
+	client.write_to_client(ERR_UMODEUNKNOWNFLAG(_hostname, client.get_nickname()));
 }
 
 void Server::handleCleanup(Client &client)
