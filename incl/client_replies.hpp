@@ -80,3 +80,9 @@
 
 #define ERR_NOORIGIN(prefix) \
     (":" + (prefix) + " 409 :No origin specified\r\n")
+
+#define RPL_NAMREPLY(prefix, nick, channel, nick_string) \
+    (":" + (prefix) + " 353 " + (nick) + " = " + (channel) + ": " + nick_string + "\r\n")
+
+#define RPL_ENDOFNAMES(prefix, nick, channel) \
+    (":" + (prefix) + " 366 " + (nick) + " " + (channel) + " :End of /NAMES list\r\n")

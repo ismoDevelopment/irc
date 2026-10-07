@@ -18,6 +18,7 @@ class Channel
 		bool isEmpty() const;
 		size_t getMemberCount() const;
 		void broadcastMessage(const std::string &message, Client *excludeClient = nullptr) const;
+		std::string	get_members() const;
 
 		//operators
 		void addOperator(Client *client);

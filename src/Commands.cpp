@@ -169,6 +169,11 @@ void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 	}
 }
 
+// static void send_names_reply(Client &client, const ParsedCommand &cmd)
+// {
+
+// }
+
 void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty() || cmd.params[0].empty())
@@ -238,6 +243,9 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 		client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
 	else
 		client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
+
+	client.write_to_client(RPL_NAMREPLY(_hostname, client.get_nickname(), channel->getName(), channel->get_members()));
+	client.write_to_client(RPL_ENDOFNAMES(_hostname, client.get_nickname(), channel->getName()));
 }
 
 void Server::handlePart(Client &client, const ParsedCommand &cmd)
