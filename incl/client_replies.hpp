@@ -69,6 +69,9 @@
 #define ERR_NOTREGISTERED(prefix, target) \
     (":" + (prefix) + " 451 " + (target) + " :You have not registered\r\n")
 
+#define RPL_UMODEIS(prefix, target, modes) \
+    (":" + (prefix) + " 221 " + (target) + " " + (modes) + "\r\n")
+
 #define RPL_NOTOPIC(prefix, target) \
     (":" + (prefix) + " 331 " + (target) + " :No topic is set\r\n")
 
