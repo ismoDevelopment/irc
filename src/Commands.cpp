@@ -360,7 +360,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 
 	channel->addInvited(targetClient);
 
-	client.write_to_client(":" + _hostname + " 341 " + client.get_nickname() + " " + targetNick + " " + channelName + "\r\n");
+	client.write_to_client(RPL_INVITING(_hostname, targetNick, channelName));
 	targetClient->write_to_client(":" + client.get_prefix() + " INVITE " + targetNick + " " + channelName + "\r\n");
 }
 
@@ -405,7 +405,7 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 	Client *targetClient = userIt->second;
 	if (!channel->hasMember(targetClient))
 	{
-		client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+		client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, targetNick, channelName));
 		return;
 	}
 
@@ -539,7 +539,7 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
 				if (userIt == _clients_by_nickname.end() || !channel->hasMember(userIt->second))
 				{
-					client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+					client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 					break;
 				}
 
@@ -645,7 +645,7 @@ void Server::handlePing(Client &client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client(":" + _hostname + " 409 " + client.get_nickname() + " :No origin specified\r\n");
+		client.write_to_client(ERR_NOORIGIN(_hostname));
 		return;
 	}
 

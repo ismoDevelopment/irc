@@ -103,4 +103,4 @@
     (":" + (prefix) + " 341 " + (channel) + " " + (nick) + "\r\n")
 
 #define ERR_NOORIGIN(prefix) \
-    (":" + (prefix) + " 409 " + (target) + " :No origin specified\r\n")
+    (":" + (prefix) + " 409 :No origin specified\r\n")
