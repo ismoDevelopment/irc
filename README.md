@@ -20,8 +20,8 @@ The following commands are implemented:
 - INVITE: _Invite a user to a channel_
 - KICK: _Kick a user from a channel (requires operator permissions)_
 - MODE: _Sets the "mode"
-- PING
-- QUIT
+- PING: _Command that responds to clients for checking connections_
+- QUIT: _Sent by some clients to announce their departure_
 
 ## Requirements
 
