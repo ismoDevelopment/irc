@@ -12,9 +12,6 @@
 #define ERR_NICKNAMEINUSE(prefix, target, nick) \
     (":" + (prefix) + " 433 " + (target) + " " + (nick) + " :Nickname is already in use\r\n")
 
-#define ERR_NICKCOLLISION(prefix, target, nick) \
-    (":" + (prefix) + " 436 " + (target) + " " + (nick) + " :Nickname collision KILL\r\n")
-
 #define ERR_ERRONEUSNICKNAME(prefix, target, nick) \
     (":" + (prefix) + " 432 " + (target) + " " + (nick) + " :Erroneous nickname\r\n")
 
@@ -27,17 +24,11 @@
 #define ERR_NOSUCHCHANNEL(prefix, target, channel) \
     (":" + (prefix) + " 403 " + (target) + " " + (channel) + " :No such channel\r\n")
 
-#define ERR_BANNEDFROMCHAN(prefix, target, channel) \
-    (":" + (prefix) + " 474 " + (target) + " " + (channel) + " :Cannot join channel (+b)\r\n")
-
 #define ERR_BADCHANNELKEY(prefix, target, channel) \
     (":" + (prefix) + " 475 " + (target) + " " + (channel) + " :Cannot join channel (+k)\r\n")
 
 #define ERR_BADCHANMASK(prefix, target, channel) \
     (":" + (prefix) + " 476 " + (target) + " " + (channel) + " :Bad Channel Mask\r\n")
-
-#define ERR_TOOMANYCHANNELS(prefix, target, channel) \
-    (":" + (prefix) + " 405 " + (target) + " " + (channel) + " :You have joined too many channels\r\n")
 
 #define ERR_NORECIPIENT(prefix, target, command) \
     (":" + (prefix) + " 411 " + (target) + " :No recipient given (" + (command) + ")\r\n")
@@ -45,23 +36,11 @@
 #define ERR_CANNOTSENDTOCHAN(prefix, target, channel) \
     (":" + (prefix) + " 404 " + (target) + " " + (channel) + " :Cannot send to channel\r\n")
 
-#define ERR_WILDTOPLEVEL(prefix, target, mask) \
-    (":" + (prefix) + " 414 " + (target) + " " + (mask) + " :Wildcard in toplevel domain\r\n")
-
 #define ERR_NOSUCHNICK(prefix, target, nick) \
     (":" + (prefix) + " 401 " + (target) + " " + (nick) + " :No such nick/channel\r\n")
 
 #define ERR_NOTEXTTOSEND(prefix, target) \
     (":" + (prefix) + " 412 " + (target) + " :No text to send\r\n")
-
-#define ERR_NOTOPLEVEL(prefix, target, mask) \
-    (":" + (prefix) + " 413 " + (target) + " " + (mask) + " :No toplevel domain specified\r\n")
-
-#define ERR_TOOMANYTARGETS(prefix, target, recipient) \
-    (":" + (prefix) + " 407 " + (target) + " " + (recipient) + " :Duplicate recipients. No message delivered\r\n")
-
-#define ERR_NOOPERHOST(prefix, target) \
-    (":" + (prefix) + " 491 " + (target) + " :No O-lines for your host\r\n")
 
 #define ERR_PASSWDMISMATCH(prefix, target) \
     (":" + (prefix) + " 464 " + (target) + " :Password incorrect\r\n")
@@ -86,9 +65,6 @@
 
 #define ERR_UMODEUNKNOWNFLAG(prefix, target) \
     (":" + (prefix) + " 501 " + (target) + " :Unknown MODE flag\r\n")
-
-#define ERR_KEYSET(prefix, target, channel) \
-    (":" + (prefix) + " 467 " + (target) + " " + (channel) + " :Channel key already set\r\n")
 
 #define ERR_NOTREGISTERED(prefix, target) \
     (":" + (prefix) + " 451 " + (target) + " :You have not registered\r\n")

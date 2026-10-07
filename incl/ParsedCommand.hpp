@@ -4,7 +4,6 @@
 
 struct ParsedCommand
 {
-	std::string					prefix;
 	std::string					command;
 	std::vector<std::string>	params;
 };

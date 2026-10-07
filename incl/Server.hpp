@@ -24,6 +24,7 @@
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
 #define MAX_NICK_SIZE 9
+#define MAX_USERNAME_SIZE 18
 #define MAX_CHANNEL_NAME_SIZE 50
 
 class Server {
@@ -48,6 +49,7 @@ class Server {
 		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN = " ,\a";
 		static constexpr std::string_view	NICKNAME_FORBIDDEN = " ,*? !@";
 		static constexpr std::string_view	NICKNAME_FORBIDDEN_FIRST = "$:#&+%~";
+		static constexpr std::string_view	USERNAME_FORBIDDEN = "!@";
 
 	public:
 		Server(uint16_t port, std::string password);
