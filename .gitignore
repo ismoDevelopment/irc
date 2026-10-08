@@ -2,5 +2,6 @@ tmp/
 ignore/
 .vscode/
 /irc_server
+/ircserv
 # /en.subject.pdf
 # /TODO.md

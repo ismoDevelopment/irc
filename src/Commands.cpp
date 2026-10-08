@@ -235,9 +235,12 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
 
 	if (channel->getTopic().empty())
-		client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
+		client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
 	else
-		client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
+		client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
+
+	client.write_to_client(RPL_NAMREPLY(_hostname, client.get_nickname(), channel->getName(), channel->get_members()));
+	client.write_to_client(RPL_ENDOFNAMES(_hostname, client.get_nickname(), channel->getName()));
 }
 
 void Server::handlePart(Client &client, const ParsedCommand &cmd)
@@ -296,9 +299,9 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
+			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
 		else
-			client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
+			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
 		return;
 	}
 
@@ -360,7 +363,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 
 	channel->addInvited(targetClient);
 
-	client.write_to_client(":" + _hostname + " 341 " + client.get_nickname() + " " + targetNick + " " + channelName + "\r\n");
+	client.write_to_client(RPL_INVITING(_hostname, client.get_nickname(), targetNick, channelName));
 	targetClient->write_to_client(":" + client.get_prefix() + " INVITE " + targetNick + " " + channelName + "\r\n");
 }
 
@@ -405,7 +408,7 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 	Client *targetClient = userIt->second;
 	if (!channel->hasMember(targetClient))
 	{
-		client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+		client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, client.get_nickname(), targetNick, channelName));
 		return;
 	}
 
@@ -427,25 +430,33 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 
 void Server::handleMode(Client &client, const ParsedCommand &cmd)
 {
-	if (cmd.params.empty())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
 		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 		return;
 	}
 
-	const std::string &channelName = cmd.params[0];
+	if (cmd.params[0].front() == '#' || cmd.params[0].front() == '&')
+		handleModeChannel(client, cmd);
+	else
+		handleModeUser(client, cmd);
+}
 
-	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(channelName));
+void Server::handleModeChannel(Client &client, const ParsedCommand &cmd)
+{
+	const std::string &targetChannel = cmd.params[0];
+
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(targetChannel));
 	if (chIt == _channels_by_name.end())
 	{
-		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetChannel));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), targetChannel));
 		return;
 	}
 
@@ -457,7 +468,7 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), targetChannel));
 		return;
 	}
 
@@ -539,7 +550,7 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
 				if (userIt == _clients_by_nickname.end() || !channel->hasMember(userIt->second))
 				{
-					client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+					client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, client.get_nickname(), targetNick, targetChannel));
 					break;
 				}
 
@@ -594,11 +605,36 @@ void Server::handleMode(Client &client, const ParsedCommand &cmd)
 
 	if (!appliedFlags.empty())
 	{
-		std::string confirm = ":" + client.get_prefix() + " MODE " + channelName + " " + appliedFlags;
+		std::string confirm = ":" + client.get_prefix() + " MODE " + targetChannel + " " + appliedFlags;
 		for (size_t i = 0; i < appliedParams.size(); i++)
 			confirm += " " + appliedParams[i];
 		channel->broadcastMessage(confirm + "\r\n", NULL);
 	}
+}
+
+void Server::handleModeUser(Client &client, const ParsedCommand &cmd)
+{
+	const std::string &targetNick = cmd.params[0];
+	std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
+	if (userIt == _clients_by_nickname.end())
+	{
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
+		return;
+	}
+
+	if (userIt->second != &client)
+	{
+		client.write_to_client(ERR_USERSDONTMATCH(_hostname, client.get_nickname()));
+		return;
+	}
+
+	if (cmd.params.size() < 2 || cmd.params[1].empty())
+	{
+		client.write_to_client(RPL_UMODEIS(_hostname, client.get_nickname(), "+"));
+		return;
+	}
+
+	client.write_to_client(ERR_UMODEUNKNOWNFLAG(_hostname, client.get_nickname()));
 }
 
 void Server::handleCleanup(Client &client)
@@ -645,7 +681,7 @@ void Server::handlePing(Client &client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client(":" + _hostname + " 409 " + client.get_nickname() + " :No origin specified\r\n");
+		client.write_to_client(ERR_NOORIGIN(_hostname, client.get_nickname()));
 		return;
 	}
 
