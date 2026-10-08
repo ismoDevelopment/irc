@@ -5,7 +5,7 @@ int	main(int argc, char *argv[])
 {
 	try {
 		if (argc != 3)
-			throw IRCException("USAGE: ./irc_server <port> <password>");
+			throw IRCException("USAGE: ./ircserv <port> <password>");
 		struct sigaction	sigact{};
 
 		Server server(convert_to_port(argv[1]), argv[2]);

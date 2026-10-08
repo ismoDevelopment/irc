@@ -1,4 +1,4 @@
-NAME = irc_server
+NAME = ircserv
 TMP_DIR = tmp
 SRC_DIR = src
 CXX = c++
