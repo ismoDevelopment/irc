@@ -105,7 +105,7 @@ void	Server::process_read_buffer(Client &client)
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client.get_fd() << "] " << "message: " << message << std::endl;
-		dispatch(client, command, _clients_by_nickname, _channels_by_name, _password);
+		dispatch(client, command);
 		message = client.get_message();
 	}
 }
