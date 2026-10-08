@@ -9,8 +9,6 @@ bool Server::_interrupted = false;
 Server::Server(uint16_t port, std::string password)
 	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("ft_irc")
 {
-	char	hostname[HOST_NAME_MAX + 1]{};
-
 	_reuse_addr_value = 1;
 	_commands_map["NICK"]    = &Server::handleNick;
 	_commands_map["PASS"]    = &Server::handlePass;

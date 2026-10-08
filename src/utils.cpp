@@ -55,7 +55,8 @@ std::string sanitize_username(std::string username, const std::string_view forbi
 		if (forbidden_chars.find(*it) == forbidden_chars.npos)
 			sanitized.push_back(*it);
 	}
-	if (sanitized.size() > max_size){
+	if (sanitized.size() > max_size)
+	{
 		sanitized = sanitized.substr(0, max_size);
 	}
 	if (sanitized.empty())
@@ -64,6 +65,7 @@ std::string sanitize_username(std::string username, const std::string_view forbi
 	}
 	return (sanitized);
 }
+
 void	modify_epollout(int fd, int epoll_fd, bool active)
 {
 	epoll_event	ev{};
