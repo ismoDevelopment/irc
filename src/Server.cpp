@@ -6,16 +6,12 @@
 
 bool Server::_interrupted = false;
 
-// _epollfd and _socketfd were never initialized. -1 means the fd is not open,
-// so stop() can close each one once.
 Server::Server(uint16_t port, std::string password)
-	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("irc.local")
+	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("ft_irc")
 {
 	char	hostname[HOST_NAME_MAX + 1]{};
 
 	_reuse_addr_value = 1;
-	if (gethostname(hostname, sizeof(hostname)) == 0 && hostname[0] != '\0')
-		_hostname = hostname;
 	_commands_map["NICK"]    = &Server::handleNick;
 	_commands_map["PASS"]    = &Server::handlePass;
 	_commands_map["PRIVMSG"] = &Server::handlePrivmsg;

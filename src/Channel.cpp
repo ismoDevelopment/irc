@@ -44,7 +44,7 @@ size_t Channel::getMemberCount() const
 	return _members.size();
 }
 
-std::string	Channel::get_members() const
+std::string Channel::get_members() const
 {
 	std::string result("");
 
@@ -52,6 +52,8 @@ std::string	Channel::get_members() const
 	{
 		if (it != _members.begin())
 			result += ' ';
+		if (isOperator(*it))
+			result += '@';
 		result += (*it)->get_nickname();
 	}
 

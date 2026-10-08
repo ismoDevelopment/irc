@@ -74,6 +74,8 @@ class Server {
 		void 		handleInvite(Client &client, const ParsedCommand &cmd);
 		void 		handleKick(Client &client, const ParsedCommand &cmd);
 		void 		handleMode(Client &client, const ParsedCommand &cmd);
+		void 		handleModeChannel(Client &client, const ParsedCommand &cmd);
+		void 		handleModeUser(Client &client, const ParsedCommand &cmd);
 		void 		handlePing(Client &client, const ParsedCommand &cmd);
 		void 		handleQuit(Client &client, const ParsedCommand&);
 		void 		handleCleanup(Client &client);

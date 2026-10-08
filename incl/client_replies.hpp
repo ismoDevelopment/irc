@@ -45,8 +45,8 @@
 #define ERR_PASSWDMISMATCH(prefix, target) \
     (":" + (prefix) + " 464 " + (target) + " :Password incorrect\r\n")
 
-#define ERR_USERNOTINCHANNEL(prefix, nick, channel) \
-    (":" + (prefix) + " 441 " + (nick) + " " + (channel) + " :They aren't on that channel\r\n")
+#define ERR_USERNOTINCHANNEL(prefix, target, nick, channel) \
+    (":" + (prefix) + " 441 " + (target) + " " + (nick) + " " + (channel) + " :They aren't on that channel\r\n")
 
 #define ERR_NOTONCHANNEL(prefix, target, channel) \
     (":" + (prefix) + " 442 " + (target) + " " + (channel) + " :You're not on that channel\r\n")
@@ -69,20 +69,23 @@
 #define ERR_NOTREGISTERED(prefix, target) \
     (":" + (prefix) + " 451 " + (target) + " :You have not registered\r\n")
 
-#define RPL_NOTOPIC(prefix, target) \
-    (":" + (prefix) + " 331 " + (target) + " :No topic is set\r\n")
+#define RPL_UMODEIS(prefix, target, modes) \
+    (":" + (prefix) + " 221 " + (target) + " " + (modes) + "\r\n")
 
-#define RPL_TOPIC(prefix, target, topic) \
-    (":" + (prefix) + " 332 " + (target) + " :" + (topic) + "\r\n")
+#define RPL_NOTOPIC(prefix, target, channel) \
+    (":" + (prefix) + " 331 " + (target) + " " + (channel) + " :No topic is set\r\n")
 
-#define RPL_INVITING(prefix, channel, nick) \
-    (":" + (prefix) + " 341 " + (channel) + " " + (nick) + "\r\n")
+#define RPL_TOPIC(prefix, target, channel, topic) \
+    (":" + (prefix) + " 332 " + (target) + " " + (channel) + " :" + (topic) + "\r\n")
 
-#define ERR_NOORIGIN(prefix) \
-    (":" + (prefix) + " 409 :No origin specified\r\n")
+#define RPL_INVITING(prefix, target, nick, channel) \
+    (":" + (prefix) + " 341 " + (target) + " " + (nick) + " " + (channel) + "\r\n")
+
+#define ERR_NOORIGIN(prefix, target) \
+    (":" + (prefix) + " 409 " + (target) + " :No origin specified\r\n")
 
 #define RPL_NAMREPLY(prefix, nick, channel, nick_string) \
-    (":" + (prefix) + " 353 " + (nick) + " = " + (channel) + ": " + nick_string + "\r\n")
+    (":" + (prefix) + " 353 " + (nick) + " = " + (channel) + " :" + (nick_string) + "\r\n")
 
 #define RPL_ENDOFNAMES(prefix, nick, channel) \
     (":" + (prefix) + " 366 " + (nick) + " " + (channel) + " :End of /NAMES list\r\n")
