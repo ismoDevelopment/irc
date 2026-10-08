@@ -39,7 +39,8 @@ class Server {
 		std::map<std::string, Client *>		_clients_by_nickname;
 		std::map<std::string, Channel *>	_channels_by_name;
 		void	wait_incoming(void);
-		void	process_buffer(int client_fd);
+		void	process_read_buffer(Client &client);
+		void	process_write_buffer(Client &client);
 		static bool							_interrupted;
 
 	public:

@@ -5,6 +5,7 @@
 #include <string>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <sys/epoll.h>
 
 class IRCException : public std::exception
 {
@@ -17,3 +18,4 @@ class IRCException : public std::exception
 
 uint16_t	convert_to_port(const char *str);
 void		set_nonblock(int fd);
+void	modify_epollout(int fd, int epoll_fd, bool active);
