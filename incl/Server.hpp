@@ -77,6 +77,7 @@ class Server {
 		void 		handleModeChannel(Client &client, const ParsedCommand &cmd);
 		void 		handleModeUser(Client &client, const ParsedCommand &cmd);
 		void 		handlePing(Client &client, const ParsedCommand &cmd);
+		void		handleQuit(Client &client);
 		void 		handleQuit(Client &client, const ParsedCommand&);
 		void 		handleCleanup(Client &client);
 
