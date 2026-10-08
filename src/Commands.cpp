@@ -20,7 +20,7 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 	const std::string &newNick = cmd.params[0];
 
 	if (NICKNAME_FORBIDDEN_FIRST.find(newNick.front()) != newNick.npos ||
-		newNick.find_first_of(NICKNAME_FORBIDDEN) != newNick.npos || 
+		newNick.find_first_of(NICKNAME_FORBIDDEN) != newNick.npos ||
 		newNick.size() > MAX_NICK_SIZE)
 	{
 		client.write_to_client(ERR_ERRONEUSNICKNAME(_hostname, client.get_nickname(), newNick));
@@ -184,9 +184,9 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 
 	const std::string &channelName = cmd.params[0];
 
-	if ((channelName.front() != '#' && channelName.front() != '&') || 
-		channelName.size() < 2 || 
-		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos || 
+	if ((channelName.front() != '#' && channelName.front() != '&') ||
+		channelName.size() < 2 ||
+		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos ||
 		channelName.size() > MAX_CHANNEL_NAME_SIZE)
 	{
 		client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
