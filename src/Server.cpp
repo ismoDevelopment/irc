@@ -126,7 +126,7 @@ void	Server::process_write_buffer(Client &client)
 	}
 	if (n != write_buffer.size())
 	{
-		write_buffer.erase(begin(write_buffer), begin(write_buffer) + n);
+		write_buffer.erase(0, n);
 		return;
 	}
 	write_buffer.clear();
@@ -222,7 +222,6 @@ void	Server::wait_incoming(void)
 		}
 		if (events[i].events & EPOLLOUT)
 		{
-			Client	&client = *(client_it->second);
 			process_write_buffer(client);
 		}
 	}
