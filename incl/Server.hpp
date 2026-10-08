@@ -44,7 +44,8 @@ class Server {
 		std::map<std::string, Channel *>	_channels_by_name;
 		std::map<std::string, CommandHandler> _commands_map;
 		void	wait_incoming(void);
-		void	process_buffer(int client_fd);
+		void	process_read_buffer(Client &client);
+		void	process_write_buffer(Client &client);
 		static bool							_interrupted;
 		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN = " ,\a";
 		static constexpr std::string_view	NICKNAME_FORBIDDEN = " ,*? !@";

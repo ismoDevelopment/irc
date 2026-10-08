@@ -1,6 +1,6 @@
 #include "Client.hpp"
 
-Client::Client(int fd) : _fd(fd)
+Client::Client(int fd, int epoll_fd) : _fd(fd), _epoll_fd(epoll_fd)
 {
 	_hasNick = false;
 	_hasUser = false;
@@ -69,27 +69,32 @@ void	Client::setWelcomed(void)
 	_welcomeSent = true;
 }
 
-void	Client::add_buffer(std::string received)
+void	Client::add_read_buffer(std::string received)
 {
-	_buffer += received;
+	_read_buffer += received;
 }
 
 void	Client::write_to_client(std::string	message)
 {
-	if (send(_fd, message.c_str(), message.size(), 0) < 0)
-		throw IRCException("send syscall failed");
+	_write_buffer += message;
+	modify_epollout(_fd, _epoll_fd, true);
 }
 
 std::string	Client::get_message(void)
 {
-	size_t	delim_index = _buffer.find("\r\n");
+	size_t	delim_index = _read_buffer.find("\r\n");
 
-	if (delim_index == _buffer.npos)
+	if (delim_index == _read_buffer.npos)
 		return ("");
-	std::string	message(_buffer);
+	std::string	message(_read_buffer);
 
 	message = message.substr(0, delim_index);
 
-	_buffer.erase(0, message.size() + 2);
+	_read_buffer.erase(0, message.size() + 2);
 	return message;
+}
+
+std::string	&Client::get_write_buffer(void)
+{
+	return (_write_buffer);
 }

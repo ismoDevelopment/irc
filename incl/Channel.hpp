@@ -58,10 +58,10 @@ class Channel
 		std::set<Client *> _operators;
 		std::set<Client *> _invited;
 
-		bool _inviteOnly; // +i
-		bool _topicLocked; // +t
-		bool _hasPassword; // +k
+		bool _inviteOnly;
+		bool _topicLocked;
+		bool _hasPassword;
 		std::string _password;
-		bool _hasUserLimit; // +l
+		bool _hasUserLimit;
 		size_t _userLimit;
 };

@@ -55,7 +55,8 @@ std::string sanitize_username(std::string username, const std::string_view forbi
 		if (forbidden_chars.find(*it) == forbidden_chars.npos)
 			sanitized.push_back(*it);
 	}
-	if (sanitized.size() > max_size){
+	if (sanitized.size() > max_size)
+	{
 		sanitized = sanitized.substr(0, max_size);
 	}
 	if (sanitized.empty())
@@ -63,4 +64,16 @@ std::string sanitize_username(std::string username, const std::string_view forbi
 		sanitized = "user";
 	}
 	return (sanitized);
+}
+
+void	modify_epollout(int fd, int epoll_fd, bool active)
+{
+	epoll_event	ev{};
+
+	ev.events = EPOLLIN | EPOLLET;
+	if (active)
+		ev.events |= EPOLLOUT;
+	ev.data.fd = fd;
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) < 0)
+		throw IRCException("epoll_ctl() syscall failed");
 }

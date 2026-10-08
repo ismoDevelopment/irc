@@ -9,8 +9,6 @@ bool Server::_interrupted = false;
 Server::Server(uint16_t port, std::string password)
 	: _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("ft_irc")
 {
-	char	hostname[HOST_NAME_MAX + 1]{};
-
 	_reuse_addr_value = 1;
 	_commands_map["NICK"]    = &Server::handleNick;
 	_commands_map["PASS"]    = &Server::handlePass;
@@ -91,24 +89,42 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
     checkRegistration(client);
 }
 
-void	Server::process_buffer(int client_fd)
+
+void	Server::process_read_buffer(Client &client)
 {
-	auto	map_it = _clients_by_fd.find(client_fd);
-
-	if (map_it == end(_clients_by_fd))
-		return;
-
-	Client	&client = *(map_it->second);
 	std::string	message(client.get_message());
 
 	while (message.size() > 0)
 	{
 		ParsedCommand	command = parseLine(message);
 
-		std::cout << "[" << client_fd << "] " << "message: " << message << std::endl;
+		std::cout << "[" << client.get_fd() << "] " << "message: " << message << std::endl;
 		dispatch(client, command);
 		message = client.get_message();
 	}
+}
+
+void	Server::process_write_buffer(Client &client)
+{
+	size_t n = 0;
+	std::string &write_buffer = client.get_write_buffer();
+
+	if (write_buffer.size() == 0)
+		return;
+
+	if ((n += send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0)
+	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return;
+		throw IRCException("send syscall failed");
+	}
+	if (n != write_buffer.size())
+	{
+		write_buffer.erase(0, n);
+		return;
+	}
+	write_buffer.clear();
+	modify_epollout(client.get_fd(), _epollfd, false);
 }
 
 void	Server::wait_incoming(void)
@@ -135,7 +151,7 @@ void	Server::wait_incoming(void)
 			sockaddr_in	peerAddr{};
 			socklen_t	peerLen = sizeof(peerAddr);
 			int	client_fd = accept(_socketfd, (struct sockaddr*) &peerAddr, &peerLen);
-			Client	new_client(client_fd);
+			Client	new_client(client_fd, _epollfd);
 
 			if (client_fd < 0)
 				this->stop("accept() syscall failed");
@@ -154,32 +170,34 @@ void	Server::wait_incoming(void)
 			add_client(new_client);
 			if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1)
 				this->stop("epoll_ctl() syscall failed");
+			continue;
 		}
-		else if (events[i].events & EPOLLHUP || events[i].events & EPOLLERR)
+		if (events[i].events & EPOLLHUP || events[i].events & EPOLLERR)
 		{
 			std::cout << "[" << events[i].data.fd << "]" << " closing socket" << std::endl;
 			epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 			erase_client(events[i].data.fd);
 			continue;
 		}
-		else if (events[i].events & EPOLLIN)
+
+		auto	client_it = _clients_by_fd.find(events[i].data.fd);
+
+		if (client_it == end(_clients_by_fd))
 		{
-			auto map_it = _clients_by_fd.find(events[i].data.fd);
+			std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
+			close(events[i].data.fd);
+			continue;
+		}
+		Client	&client = *(client_it->second);
 
-			if (map_it == end(_clients_by_fd))
-			{
-				std::cout << "[" << events[i].data.fd << "]" << " Unable to find client in map" << std::endl;
-				close(events[i].data.fd);
-				continue;
-			}
-
-			Client	&client = *(map_it->second);
+		if (events[i].events & EPOLLIN)
+		{
 			char	received[1024]{};
 			ssize_t	n = recv(events[i].data.fd, &received, 1024, 0);
 
 			while (n > 0)
 			{
-				client.add_buffer(received);
+				client.add_read_buffer(received);
 				n = recv(events[i].data.fd, &received, 1024, 0);
 			}
 			if (n == 0)
@@ -189,12 +207,16 @@ void	Server::wait_incoming(void)
 				erase_client(events[i].data.fd);
 				continue;
 			}
-			if (n < 0 && errno != EAGAIN)
+			if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
 			{
 				std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
 				Server::stop(nullptr);
 			}
-			process_buffer(events[i].data.fd);
+			process_read_buffer(client);
+		}
+		if (events[i].events & EPOLLOUT)
+		{
+			process_write_buffer(client);
 		}
 	}
 }
@@ -217,7 +239,7 @@ void	Server::erase_client(int fd)
 		return;
 
 	Client	&client = *(map_it->second);
-	
+
 	handleCleanup(client);
 	_clients_by_fd.erase(fd);
 	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));
