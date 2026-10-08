@@ -238,6 +238,9 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 		client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
 	else
 		client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
+
+	client.write_to_client(RPL_NAMREPLY(_hostname, client.get_nickname(), channel->getName(), channel->get_members()));
+	client.write_to_client(RPL_ENDOFNAMES(_hostname, client.get_nickname(), channel->getName()));
 }
 
 void Server::handlePart(Client &client, const ParsedCommand &cmd)
@@ -360,7 +363,7 @@ void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 
 	channel->addInvited(targetClient);
 
-	client.write_to_client(":" + _hostname + " 341 " + client.get_nickname() + " " + targetNick + " " + channelName + "\r\n");
+	client.write_to_client(RPL_INVITING(_hostname, client.get_nickname(), targetNick, channelName));
 	targetClient->write_to_client(":" + client.get_prefix() + " INVITE " + targetNick + " " + channelName + "\r\n");
 }
 
@@ -405,7 +408,7 @@ void Server::handleKick(Client &client, const ParsedCommand &cmd)
 	Client *targetClient = userIt->second;
 	if (!channel->hasMember(targetClient))
 	{
-		client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+		client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, client.get_nickname(), targetNick, channelName));
 		return;
 	}
 
@@ -547,7 +550,7 @@ void Server::handleModeChannel(Client &client, const ParsedCommand &cmd)
 				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
 				if (userIt == _clients_by_nickname.end() || !channel->hasMember(userIt->second))
 				{
-					client.write_to_client(":" + _hostname + " 441 " + client.get_nickname() + " " + targetNick + " " + targetChannel + " :Not present on that channel\r\n");
+					client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, client.get_nickname(), targetNick, targetChannel));
 					break;
 				}
 
@@ -678,7 +681,7 @@ void Server::handlePing(Client &client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client(":" + _hostname + " 409 " + client.get_nickname() + " :No origin specified\r\n");
+		client.write_to_client(ERR_NOORIGIN(_hostname, client.get_nickname()));
 		return;
 	}
 
