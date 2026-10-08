@@ -235,9 +235,9 @@ void Server::handleJoin(Client &client, const ParsedCommand &cmd)
 	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
 
 	if (channel->getTopic().empty())
-		client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
+		client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
 	else
-		client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
+		client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
 }
 
 void Server::handlePart(Client &client, const ParsedCommand &cmd)
@@ -296,9 +296,9 @@ void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client(RPL_NOTOPIC(_hostname, channel->getName()));
+			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
 		else
-			client.write_to_client(RPL_TOPIC(_hostname, channel->getName(), channel->getTopic()));
+			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
 		return;
 	}
 

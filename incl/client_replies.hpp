@@ -72,11 +72,11 @@
 #define RPL_UMODEIS(prefix, target, modes) \
     (":" + (prefix) + " 221 " + (target) + " " + (modes) + "\r\n")
 
-#define RPL_NOTOPIC(prefix, target) \
-    (":" + (prefix) + " 331 " + (target) + " :No topic is set\r\n")
+#define RPL_NOTOPIC(prefix, target, channel) \
+    (":" + (prefix) + " 331 " + (target) + " " + (channel) + " :No topic is set\r\n")
 
-#define RPL_TOPIC(prefix, target, topic) \
-    (":" + (prefix) + " 332 " + (target) + " :" + (topic) + "\r\n")
+#define RPL_TOPIC(prefix, target, channel, topic) \
+    (":" + (prefix) + " 332 " + (target) + " " + (channel) + " :" + (topic) + "\r\n")
 
 #define RPL_INVITING(prefix, channel, nick) \
     (":" + (prefix) + " 341 " + (channel) + " " + (nick) + "\r\n")
