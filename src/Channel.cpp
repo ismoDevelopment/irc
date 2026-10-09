@@ -48,7 +48,7 @@ std::string Channel::get_members() const
 {
 	std::string result("");
 
-	for (std::set<Client *>::const_iterator it = _members.begin(); it != _members.end(); ++it)
+	for (auto it = _members.begin(); it != _members.end(); ++it)
 	{
 		if (it != _members.begin())
 			result += ' ';

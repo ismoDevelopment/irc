@@ -92,33 +92,38 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
 
 void	Server::process_read_buffer(Client &client)
 {
-	std::string	message(client.get_message());
+	std::string& read_buffer = client.get_read_buffer();
+	size_t	delim_index = read_buffer.find("\r\n");
 
-	while (message.size() > 0)
+	while (delim_index != read_buffer.npos)
 	{
+		std::string		message = read_buffer.substr(0, delim_index);
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client.get_fd() << "] " << "message: " << message << std::endl;
+
+		read_buffer.erase(0, message.size() + 2);
 		dispatch(client, command);
-		message = client.get_message();
+		delim_index = read_buffer.find("\r\n");
 	}
 }
 
 void	Server::process_write_buffer(Client &client)
 {
-	size_t n = 0;
+	ssize_t n = 0;
 	std::string &write_buffer = client.get_write_buffer();
 
 	if (write_buffer.size() == 0)
 		return;
 
-	if ((n += send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0)
+	if ((n = send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0)
 	{
+		
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;
 		throw IRCException("send syscall failed");
 	}
-	if (n != write_buffer.size())
+	if (n != (ssize_t) write_buffer.size())
 	{
 		write_buffer.erase(0, n);
 		return;
@@ -203,6 +208,7 @@ void	Server::wait_incoming(void)
 			if (n == 0)
 			{
 				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
+
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 				erase_client(events[i].data.fd);
 				continue;
@@ -240,6 +246,7 @@ void	Server::erase_client(int fd)
 
 	Client	&client = *(map_it->second);
 
+	handleQuit(client, ParsedCommand());
 	handleCleanup(client);
 	_clients_by_fd.erase(fd);
 	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));

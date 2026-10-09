@@ -5,6 +5,7 @@ Client::Client(int fd, int epoll_fd) : _fd(fd), _epoll_fd(epoll_fd)
 	_hasNick = false;
 	_hasUser = false;
 	_hasPassword = false;
+	_has_quit = false;
 	_welcomeSent = false;
 	_nickname = "*";
 	_username = "*";
@@ -59,6 +60,16 @@ bool	Client::is_registered() const
 	return _hasPassword && _hasNick && _hasUser;
 }
 
+bool	Client::has_quit() const
+{
+	return _has_quit;
+}
+
+void	Client::set_quit()
+{
+	_has_quit = true;
+}
+
 bool	Client::hasWelcomed(void) const
 {
 	return _welcomeSent;
@@ -80,18 +91,9 @@ void	Client::write_to_client(std::string	message)
 	modify_epollout(_fd, _epoll_fd, true);
 }
 
-std::string	Client::get_message(void)
+std::string &Client::get_read_buffer(void)
 {
-	size_t	delim_index = _read_buffer.find("\r\n");
-
-	if (delim_index == _read_buffer.npos)
-		return ("");
-	std::string	message(_read_buffer);
-
-	message = message.substr(0, delim_index);
-
-	_read_buffer.erase(0, message.size() + 2);
-	return message;
+	return (_read_buffer);
 }
 
 std::string	&Client::get_write_buffer(void)

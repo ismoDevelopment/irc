@@ -666,11 +666,14 @@ void Server::handleCleanup(Client &client)
 
 void Server::handleQuit(Client &client, const ParsedCommand &cmd)
 {
+	if (client.has_quit())
+		return;
+
 	std::string reason;
 	if (cmd.params.size() >= 1)
 		reason = cmd.params[0];
 	else
-		reason = "I go";
+		reason = "Unknown reason";
 
 	for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); ++it)
 	{
@@ -680,6 +683,7 @@ void Server::handleQuit(Client &client, const ParsedCommand &cmd)
 	}
 
 	handleCleanup(client);
+	client.set_quit();
 }
 
 void Server::handlePing(Client &client, const ParsedCommand &cmd)
