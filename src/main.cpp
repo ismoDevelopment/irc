@@ -9,7 +9,7 @@ int	main(int argc, char *argv[])
 		return (1);
 	}
 
-	Server server(convert_to_port(argv[1], argv[2]);
+	Server server(convert_to_port(argv[1]), argv[2]);
 	struct sigaction	sigact{};
 
 	sigact.sa_handler = &server.sigint_handler;
