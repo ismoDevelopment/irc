@@ -20,6 +20,7 @@ class Client {
 		bool		_hasNick;
 		bool		_hasUser;
 		bool		_hasPassword;
+		bool		_has_quit;
 		bool		_welcomeSent;
 		std::string	_read_buffer;
 		std::string	_write_buffer;
@@ -37,6 +38,8 @@ class Client {
 		std::string	get_nickname(void) const;
 		std::string	get_username(void) const;
 		std::string	get_prefix(void) const;
+		bool	has_quit() const;
+		void	set_quit();
 		int		get_fd(void) const;
 		bool	is_registered() const;
 		void	add_read_buffer(std::string received);

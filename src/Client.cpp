@@ -5,6 +5,7 @@ Client::Client(int fd, int epoll_fd) : _fd(fd), _epoll_fd(epoll_fd)
 	_hasNick = false;
 	_hasUser = false;
 	_hasPassword = false;
+	_has_quit = false;
 	_welcomeSent = false;
 	_nickname = "*";
 	_username = "*";
@@ -57,6 +58,16 @@ void	Client::set_password(void)
 bool	Client::is_registered() const
 {
 	return _hasPassword && _hasNick && _hasUser;
+}
+
+bool	Client::has_quit() const
+{
+	return _has_quit;
+}
+
+void	Client::set_quit()
+{
+	_has_quit = true;
 }
 
 bool	Client::hasWelcomed(void) const

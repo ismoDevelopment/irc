@@ -209,12 +209,7 @@ void	Server::wait_incoming(void)
 			{
 				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
 
-				for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); ++it)
-				{
-					Channel *channel = it->second;
-					if (channel->hasMember(&client))
-						channel->broadcastMessage(":" + client.get_prefix() + " QUIT :" + "Unknown reason" + "\r\n", &client);
-				}
+				handleQuit(client, ParsedCommand());
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 				erase_client(events[i].data.fd);
 				continue;
