@@ -80,20 +80,6 @@ void	Client::write_to_client(std::string	message)
 	modify_epollout(_fd, _epoll_fd, true);
 }
 
-std::string	Client::get_message(void)
-{
-	size_t	delim_index = _read_buffer.find("\r\n");
-
-	if (delim_index == _read_buffer.npos)
-		return ("");
-	std::string	message(_read_buffer);
-
-	message = message.substr(0, delim_index);
-
-	_read_buffer.erase(0, message.size() + 2);
-	return message;
-}
-
 std::string &Client::get_read_buffer(void)
 {
 	return (_read_buffer);
