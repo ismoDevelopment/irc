@@ -209,9 +209,7 @@ void	Server::wait_incoming(void)
 			{
 				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
 
-				handleQuit(client, ParsedCommand());
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-				erase_client(events[i].data.fd);
 				continue;
 			}
 			if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
@@ -247,6 +245,7 @@ void	Server::erase_client(int fd)
 
 	Client	&client = *(map_it->second);
 
+	handleQuit(client, ParsedCommand());
 	handleCleanup(client);
 	_clients_by_fd.erase(fd);
 	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));
