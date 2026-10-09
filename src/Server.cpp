@@ -210,6 +210,7 @@ void	Server::wait_incoming(void)
 				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
 
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+				erase_client(events[i].data.fd);
 				continue;
 			}
 			if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
