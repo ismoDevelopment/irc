@@ -94,6 +94,11 @@ std::string	Client::get_message(void)
 	return message;
 }
 
+std::string &Client::get_read_buffer(void)
+{
+	return (_read_buffer);
+}
+
 std::string	&Client::get_write_buffer(void)
 {
 	return (_write_buffer);

@@ -42,5 +42,6 @@ class Client {
 		void	add_read_buffer(std::string received);
 		void	write_to_client(std::string	message);
 		std::string& get_write_buffer(void);
+		std::string& get_read_buffer(void);
 		std::string	get_message(void);
 };
