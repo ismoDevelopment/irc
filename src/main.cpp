@@ -15,7 +15,8 @@ int	main(int argc, char *argv[])
 	sigact.sa_handler = &server.sigint_handler;
 
 	try {
-		if (sigaction(SIGINT, &sigact, NULL) < 0)
+		if (sigaction(SIGINT, &sigact, NULL) < 0
+			|| sigaction(SIGTERM, &sigact, NULL) < 0)
 			throw IRCException("Failed to setup signal handling");
 
 		server.start();

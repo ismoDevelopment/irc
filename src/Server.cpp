@@ -32,7 +32,7 @@ std::string	Server::get_hostname(void) const
 
 void	Server::sigint_handler(int signum)
 {
-	if (signum == SIGINT)
+	if (signum == SIGINT || signum == SIGTERM)
 		_interrupted = true;
 }
 
