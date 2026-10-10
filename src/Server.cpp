@@ -123,7 +123,7 @@ void	Server::process_write_buffer(Client &client)
 		int	fd = client.get_fd();
 		int	err = errno;
 		std::cout << "[" << fd << "] send error: " << std::strerror(err)
-			<< " — dropping client" << std::endl;
+			<< " -- drop client now" << std::endl;
 		erase_client(fd);
 		return;
 	}
@@ -221,7 +221,7 @@ void	Server::wait_incoming(void)
 			{
 				int	err = errno;
 				std::cout << "[" << events[i].data.fd << "] recv error: "
-					<< std::strerror(err) << " — dropping client" << std::endl;
+					<< std::strerror(err) << " -- drop client now" << std::endl;
 				erase_client(events[i].data.fd);
 				continue;
 			}
