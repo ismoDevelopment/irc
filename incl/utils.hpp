@@ -13,9 +13,11 @@ class IRCException : public std::exception
 {
 	private:
 		const char	*_message;
+		int			_errno;
 	public:
-		IRCException(const char *msg);
+		IRCException(const char *msg, int err = 0);
 		const char* what() const noexcept;
+		int			get_errno() const noexcept;
 };
 
 uint16_t	convert_to_port(const char *str);

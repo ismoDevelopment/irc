@@ -121,7 +121,7 @@ void	Server::process_write_buffer(Client &client)
 		
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;
-		throw IRCException("send syscall failed");
+		throw IRCException("send syscall failed", errno);
 	}
 	if (n != (ssize_t) write_buffer.size())
 	{
@@ -289,6 +289,8 @@ void	Server::start()
 
 void	Server::stop(const char *message)
 {
+	int	saved_errno = errno;
+
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
@@ -305,7 +307,7 @@ void	Server::stop(const char *message)
 	}
 
 	if (message)
-		throw IRCException(message);
+		throw IRCException(message, saved_errno);
 	std::cout << std::endl;
 	exit(0);
 }
