@@ -11,12 +11,15 @@ int	main(int argc, char *argv[])
 
 	Server server(convert_to_port(argv[1]), argv[2]);
 	struct sigaction	sigact{};
+	struct sigaction	sigpipe_act{};
 
 	sigact.sa_handler = &server.sigint_handler;
+	sigpipe_act.sa_handler = SIG_IGN;
 
 	try {
 		if (sigaction(SIGINT, &sigact, NULL) < 0
-			|| sigaction(SIGTERM, &sigact, NULL) < 0)
+			|| sigaction(SIGTERM, &sigact, NULL) < 0
+			|| sigaction(SIGPIPE, &sigpipe_act, NULL) < 0)
 			throw IRCException("Failed to setup signal handling", errno);
 
 		server.start();

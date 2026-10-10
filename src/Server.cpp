@@ -118,10 +118,14 @@ void	Server::process_write_buffer(Client &client)
 
 	if ((n = send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0)
 	{
-		
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;
-		throw IRCException("send syscall failed", errno);
+		int	fd = client.get_fd();
+		int	err = errno;
+		std::cout << "[" << fd << "] send error: " << std::strerror(err)
+			<< " — dropping client" << std::endl;
+		erase_client(fd);
+		return;
 	}
 	if (n != (ssize_t) write_buffer.size())
 	{
@@ -215,13 +219,18 @@ void	Server::wait_incoming(void)
 			}
 			if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
 			{
-				std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
-				Server::stop(nullptr);
+				int	err = errno;
+				std::cout << "[" << events[i].data.fd << "] recv error: "
+					<< std::strerror(err) << " — dropping client" << std::endl;
+				erase_client(events[i].data.fd);
+				continue;
 			}
 			process_read_buffer(client);
 		}
 		if (events[i].events & EPOLLOUT)
 		{
+			if (_clients_by_fd.find(events[i].data.fd) == end(_clients_by_fd))
+				continue;
 			process_write_buffer(client);
 		}
 	}
