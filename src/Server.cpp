@@ -229,8 +229,6 @@ void	Server::wait_incoming(void)
 		}
 		if (events[i].events & EPOLLOUT)
 		{
-			if (_clients_by_fd.find(events[i].data.fd) == end(_clients_by_fd))
-				continue;
 			process_write_buffer(client);
 		}
 	}
