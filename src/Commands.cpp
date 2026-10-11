@@ -36,18 +36,29 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 	}
 
 	std::string oldNick = client.get_nickname();
+	bool nickChange = client.is_registered() && oldNick != newNick;
+	std::string oldPrefix;
+
+	if (nickChange)
+		oldPrefix = client.get_prefix();
 
 	if (!oldNick.empty())
 		_clients_by_nickname.erase(to_IRClower(oldNick));
 
-	// TODO: optional, but recommended. After a nick change, broadcast
-	// ":oldprefix NICK newnick" to this client and to everyone who shares a
-	// channel with them. Clients such as irssi only rename the user when they
-	// receive that line, so /nick otherwise keeps the old name in the status
-	// bar and channel list while later messages arrive from the new nick.
-	// Capture the prefix before set_nickname(), since get_prefix() uses the current nick.
 	client.set_nickname(newNick);
 	_clients_by_nickname[to_IRClower(newNick)] = &client;
+
+	if (nickChange)
+	{
+		std::string message = ":" + oldPrefix + " NICK " + newNick + "\r\n";
+
+		client.write_to_client(message);
+		for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); ++it)
+		{
+			if (it->second->hasMember(&client))
+				it->second->broadcastMessage(message, &client);
+		}
+	}
 
 	checkRegistration(client);
 }
