@@ -42,6 +42,7 @@ class Client {
 		void	set_quit();
 		int		get_fd(void) const;
 		bool	is_registered() const;
+		bool	has_id_without_password() const;
 		void	add_read_buffer(std::string received);
 		void	write_to_client(std::string	message);
 		std::string& get_write_buffer(void);

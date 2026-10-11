@@ -7,6 +7,8 @@ void Server::checkRegistration(Client &client)
 		client.write_to_client(":" + _hostname + " 001 " + client.get_nickname() + " :Welcome to the IRC server!\r\n");
 		client.setWelcomed();
 	}
+	else if (client.has_id_without_password())
+		client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
 }
 
 void Server::handleNick(Client& client, const ParsedCommand &cmd)
@@ -59,8 +61,6 @@ void Server::handleNick(Client& client, const ParsedCommand &cmd)
 				it->second->broadcastMessage(message, &client);
 		}
 	}
-
-	checkRegistration(client);
 }
 
 void Server::handlePass(Client &client, const ParsedCommand &cmd)
@@ -102,7 +102,6 @@ void Server::handleUser(Client &client, const ParsedCommand &cmd)
 	}
 
 	client.set_username(sanitize_username(cmd.params[0], USERNAME_FORBIDDEN, MAX_USERNAME_SIZE));
-	checkRegistration(client);;
 }
 
 void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)

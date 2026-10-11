@@ -60,6 +60,11 @@ bool	Client::is_registered() const
 	return _hasPassword && _hasNick && _hasUser;
 }
 
+bool	Client::has_id_without_password() const
+{
+	return _hasNick && _hasUser && !_hasPassword;
+}
+
 bool	Client::has_quit() const
 {
 	return _has_quit;
