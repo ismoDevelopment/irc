@@ -168,6 +168,7 @@ void	Server::wait_incoming(void)
 			char	host[INET_ADDRSTRLEN];
 			if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr)
 				new_client.set_host(host);
+			std::cout << "[" << client_fd << "] accepted socket: " << host << std::endl;
 
 			set_nonblock(client_fd);
 
@@ -175,7 +176,6 @@ void	Server::wait_incoming(void)
 
 			ev.events = EPOLLIN;
 			ev.data.fd = client_fd;
-			std::cout << "registering fd: " << client_fd << std::endl;
 			add_client(new_client);
 			if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1)
 				this->stop("epoll_ctl() syscall failed");
