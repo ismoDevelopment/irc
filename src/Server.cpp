@@ -183,7 +183,7 @@ void	Server::wait_incoming(void)
 		}
 		if (events[i].events & EPOLLHUP || events[i].events & EPOLLERR)
 		{
-			std::cout << "[" << events[i].data.fd << "]" << " closing socket" << std::endl;
+			std::cout << "[" << events[i].data.fd << "] closing socket" << std::endl;
 			epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 			erase_client(events[i].data.fd);
 			continue;
@@ -193,7 +193,7 @@ void	Server::wait_incoming(void)
 
 		if (client_it == end(_clients_by_fd))
 		{
-			std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
+			std::cout << "[" << events[i].data.fd << "] Unable to find client in map" << std::endl;
 			close(events[i].data.fd);
 			continue;
 		}
@@ -211,7 +211,7 @@ void	Server::wait_incoming(void)
 			}
 			if (n == 0)
 			{
-				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
+				std::cout << "[" << events[i].data.fd << "] shut down" << std::endl;
 
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 				erase_client(events[i].data.fd);
