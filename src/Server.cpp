@@ -193,7 +193,7 @@ void	Server::wait_incoming(void)
 
 		if (client_it == end(_clients_by_fd))
 		{
-			std::cout << "[" << events[i].data.fd << "] Unable to find client in map" << std::endl;
+			std::cout << "[" << events[i].data.fd << "] unable to find client in map" << std::endl;
 			close(events[i].data.fd);
 			continue;
 		}
