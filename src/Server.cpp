@@ -173,7 +173,7 @@ void	Server::wait_incoming(void)
 
 			epoll_event	ev{};
 
-			ev.events = EPOLLIN | EPOLLET;
+			ev.events = EPOLLIN;
 			ev.data.fd = client_fd;
 			std::cout << "registering fd: " << client_fd << std::endl;
 			add_client(new_client);
@@ -284,7 +284,7 @@ void	Server::start()
 
 	epoll_event	ev{};
 
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = EPOLLIN;
 	ev.data.fd = _socketfd;
 
 	if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &ev) < 0)

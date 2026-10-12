@@ -75,7 +75,7 @@ void	modify_epollout(int fd, int epoll_fd, bool active)
 {
 	epoll_event	ev{};
 
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = EPOLLIN;
 	if (active)
 		ev.events |= EPOLLOUT;
 	ev.data.fd = fd;
