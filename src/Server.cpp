@@ -176,9 +176,11 @@ void	Server::wait_incoming(void)
 			ev.events = EPOLLIN;
 			ev.data.fd = client_fd;
 			std::cout << "registering fd: " << client_fd << std::endl;
-			add_client(new_client);
 			if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1)
+			{
 				this->stop("epoll_ctl() syscall failed");
+			}
+			add_client(new_client);
 			continue;
 		}
 		if (events[i].events & EPOLLHUP || events[i].events & EPOLLERR)
@@ -244,7 +246,6 @@ void	Server::add_client(Client &client)
 void	Server::erase_client(int fd)
 {
 	epoll_ctl(_epollfd, EPOLL_CTL_DEL, fd, nullptr);
-	close(fd);
 
 	auto	map_it = _clients_by_fd.find(fd);
 
@@ -252,12 +253,13 @@ void	Server::erase_client(int fd)
 		return;
 
 	Client	&client = *(map_it->second);
+	std::string nickname = client.get_nickname();
 
 	handleQuit(client, ParsedCommand());
-	handleCleanup(client);
-	_clients_by_fd.erase(fd);
-	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));
 	_clients.erase(map_it->second);
+	_clients_by_fd.erase(fd);
+	_clients_by_nickname.erase(to_IRClower(nickname));
+	close(fd);
 }
 
 void	Server::start()
@@ -300,6 +302,8 @@ void	Server::stop(const char *message)
 
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
+
+	_commands_map.clear();
 
 	if (_epollfd > 0)
 	{
