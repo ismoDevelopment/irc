@@ -23,7 +23,7 @@
 
 #define	S_MAX_PENDING 5
 #define S_MAX_EVENTS 10
-#define MAX_NICK_SIZE 9
+#define MAX_NICK_SIZE 30
 #define MAX_USERNAME_SIZE 18
 #define MAX_CHANNEL_NAME_SIZE 50
 

@@ -41,7 +41,7 @@ Inside the repository, run Make
 
 Run the executable as follows with the port and password as arguments
 
-`./irc_server <PORT> <PASSWORD>`
+`./ircserv <PORT> <PASSWORD>`
 
 ## Resources
 - [https://modern.ircdocs.horse/#numeric-replies](https://modern.ircdocs.horse/#numeric-replies)

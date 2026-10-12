@@ -32,7 +32,7 @@ std::string	Server::get_hostname(void) const
 
 void	Server::sigint_handler(int signum)
 {
-	if (signum == SIGINT)
+	if (signum == SIGINT || signum == SIGTERM)
 		_interrupted = true;
 }
 
@@ -92,33 +92,42 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
 
 void	Server::process_read_buffer(Client &client)
 {
-	std::string	message(client.get_message());
+	std::string& read_buffer = client.get_read_buffer();
+	size_t	delim_index = read_buffer.find("\r\n");
 
-	while (message.size() > 0)
+	while (delim_index != read_buffer.npos)
 	{
+		std::string		message = read_buffer.substr(0, delim_index);
 		ParsedCommand	command = parseLine(message);
 
 		std::cout << "[" << client.get_fd() << "] " << "message: " << message << std::endl;
+
+		read_buffer.erase(0, message.size() + 2);
 		dispatch(client, command);
-		message = client.get_message();
+		delim_index = read_buffer.find("\r\n");
 	}
 }
 
 void	Server::process_write_buffer(Client &client)
 {
-	size_t n = 0;
+	ssize_t n = 0;
 	std::string &write_buffer = client.get_write_buffer();
 
 	if (write_buffer.size() == 0)
 		return;
 
-	if ((n += send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0)
+	if ((n = send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0)
 	{
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return;
-		throw IRCException("send syscall failed");
+		int	fd = client.get_fd();
+		int	err = errno;
+		std::cout << "[" << fd << "] send error: " << std::strerror(err)
+			<< " -- drop client now" << std::endl;
+		erase_client(fd);
+		return;
 	}
-	if (n != write_buffer.size())
+	if (n != (ssize_t) write_buffer.size())
 	{
 		write_buffer.erase(0, n);
 		return;
@@ -164,7 +173,7 @@ void	Server::wait_incoming(void)
 
 			epoll_event	ev{};
 
-			ev.events = EPOLLIN | EPOLLET;
+			ev.events = EPOLLIN;
 			ev.data.fd = client_fd;
 			std::cout << "registering fd: " << client_fd << std::endl;
 			add_client(new_client);
@@ -203,14 +212,18 @@ void	Server::wait_incoming(void)
 			if (n == 0)
 			{
 				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
+
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 				erase_client(events[i].data.fd);
 				continue;
 			}
 			if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
 			{
-				std::cout << "[" << events[i].data.fd << "]" << " closing socket due to read error" << std::endl;
-				Server::stop(nullptr);
+				int	err = errno;
+				std::cout << "[" << events[i].data.fd << "] recv error: "
+					<< std::strerror(err) << " -- drop client now" << std::endl;
+				erase_client(events[i].data.fd);
+				continue;
 			}
 			process_read_buffer(client);
 		}
@@ -240,6 +253,7 @@ void	Server::erase_client(int fd)
 
 	Client	&client = *(map_it->second);
 
+	handleQuit(client, ParsedCommand());
 	handleCleanup(client);
 	_clients_by_fd.erase(fd);
 	_clients_by_nickname.erase(to_IRClower(client.get_nickname()));
@@ -270,7 +284,7 @@ void	Server::start()
 
 	epoll_event	ev{};
 
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = EPOLLIN;
 	ev.data.fd = _socketfd;
 
 	if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &ev) < 0)
@@ -282,6 +296,8 @@ void	Server::start()
 
 void	Server::stop(const char *message)
 {
+	int	saved_errno = errno;
+
 	while (!_clients.empty())
 		erase_client(_clients.front().get_fd());
 
@@ -298,7 +314,7 @@ void	Server::stop(const char *message)
 	}
 
 	if (message)
-		throw IRCException(message);
+		throw IRCException(message, saved_errno);
 	std::cout << std::endl;
 	exit(0);
 }

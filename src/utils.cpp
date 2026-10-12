@@ -1,12 +1,17 @@
 #include "utils.hpp"
 
-IRCException::IRCException(const char *msg) : _message(msg)
+IRCException::IRCException(const char *msg, int err) : _message(msg), _errno(err)
 {
 
 }
 
 const char* IRCException::what() const noexcept {
 	return this->_message;
+}
+
+int	IRCException::get_errno() const noexcept
+{
+	return this->_errno;
 }
 
 uint16_t	convert_to_port(const char *str)
@@ -21,7 +26,7 @@ uint16_t	convert_to_port(const char *str)
 void	set_nonblock(int fd)
 {
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0)
-		throw IRCException("fcntl() syscall failed");
+		throw IRCException("fcntl() syscall failed", errno);
 }
 
 std::string to_IRClower(std::string str)
@@ -70,10 +75,10 @@ void	modify_epollout(int fd, int epoll_fd, bool active)
 {
 	epoll_event	ev{};
 
-	ev.events = EPOLLIN | EPOLLET;
+	ev.events = EPOLLIN;
 	if (active)
 		ev.events |= EPOLLOUT;
 	ev.data.fd = fd;
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) < 0)
-		throw IRCException("epoll_ctl() syscall failed");
+		throw IRCException("epoll_ctl() syscall failed", errno);
 }
