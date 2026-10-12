@@ -178,6 +178,7 @@ void	Server::wait_incoming(void)
 			std::cout << "registering fd: " << client_fd << std::endl;
 			if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1)
 			{
+				close(client_fd);
 				this->stop("epoll_ctl() syscall failed");
 			}
 			add_client(new_client);
