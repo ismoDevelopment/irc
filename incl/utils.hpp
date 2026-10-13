@@ -1,7 +1,6 @@
 #pragma once
 
 #include <arpa/inet.h>
-#include <cctype>
 #include <cstdint>
 #include <exception>
 #include <fcntl.h>
