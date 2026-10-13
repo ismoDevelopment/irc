@@ -168,6 +168,7 @@ void	Server::wait_incoming(void)
 			char	host[INET_ADDRSTRLEN];
 			if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr)
 				new_client.set_host(host);
+			std::cout << "[" << client_fd << "] accepted socket: " << host << std::endl;
 
 			set_nonblock(client_fd);
 
@@ -175,7 +176,6 @@ void	Server::wait_incoming(void)
 
 			ev.events = EPOLLIN;
 			ev.data.fd = client_fd;
-			std::cout << "registering fd: " << client_fd << std::endl;
 			if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1)
 			{
 				close(client_fd);
@@ -186,7 +186,7 @@ void	Server::wait_incoming(void)
 		}
 		if (events[i].events & EPOLLHUP || events[i].events & EPOLLERR)
 		{
-			std::cout << "[" << events[i].data.fd << "]" << " closing socket" << std::endl;
+			std::cout << "[" << events[i].data.fd << "] closing socket" << std::endl;
 			epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 			erase_client(events[i].data.fd);
 			continue;
@@ -196,7 +196,7 @@ void	Server::wait_incoming(void)
 
 		if (client_it == end(_clients_by_fd))
 		{
-			std::cout << "[" << events[i].data.fd << "]" << "Unable to find client in map" << std::endl;
+			std::cout << "[" << events[i].data.fd << "] unable to find client in map" << std::endl;
 			close(events[i].data.fd);
 			continue;
 		}
@@ -214,7 +214,7 @@ void	Server::wait_incoming(void)
 			}
 			if (n == 0)
 			{
-				std::cout << "[" << events[i].data.fd << "]" << " shut down" << std::endl;
+				std::cout << "[" << events[i].data.fd << "] shut down" << std::endl;
 
 				epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
 				erase_client(events[i].data.fd);

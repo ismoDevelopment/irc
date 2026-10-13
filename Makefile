@@ -28,6 +28,19 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+debug:
+	$(MAKE) fclean
+	$(MAKE) CXXFLAGS="$(CXXFLAGS) -g -O0" all
+
+valgrind: debug
+	valgrind \
+		--leak-check=full \
+		--show-leak-kinds=all \
+		--track-fds=yes \
+		--num-callers=40 \
+		--error-exitcode=42 \
+		./$(NAME) 6667 pass
+
+.PHONY: all clean fclean re debug valgrind
 
 -include $(DEPS)
