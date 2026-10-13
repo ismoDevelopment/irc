@@ -17,7 +17,6 @@
 #include <unistd.h>
 
 #include <arpa/inet.h>
-#include <climits>
 #include <utility>
 
 bool Server::_interrupted = false;
@@ -81,7 +80,7 @@ static ParsedCommand parseLine(const std::string& line)
     return cmd;
 }
 
-bool Server::needs_register(const std::string& command) const
+bool Server::needs_register(const std::string& command)
 {
     return (command != "USER" && command != "NICK" && command != "PASS" && command != "NOTICE" &&
             command != "PING" && command != "QUIT");
@@ -125,7 +124,7 @@ void Server::process_write_buffer(Client& client)
 {
     std::string& write_buffer = client.get_write_buffer();
 
-    if (write_buffer.size() == 0) {
+    if (write_buffer.empty()) {
         return;
     }
 

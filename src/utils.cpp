@@ -45,18 +45,18 @@ std::string to_IRClower(std::string str)
                 *iter = '|';
                 break;
             default:
-                *iter = tolower(*iter);
+                *iter = static_cast<char>(std::tolower(static_cast<unsigned char>(*iter)));
         }
     }
     return str;
 }
 
-std::string sanitize_username(std::string username, std::string_view forbidden_chars,
+std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,
                               size_t max_size)
 {
     std::string sanitized;
 
-    for (char& iter : username) {
+    for (char iter : username) {
         if (forbidden_chars.find(iter) == std::string_view::npos) {
             sanitized.push_back(iter);
         }

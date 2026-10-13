@@ -1,14 +1,11 @@
 #include "Server.hpp"
 #include "utils.hpp"
 #include <arpa/inet.h>
-#include <cctype>
-#include <cstdlib>
-#include <cstring>
 #include <exception>
 #include <fcntl.h>
 #include <iostream>
 #include <netinet/in.h>
-#include <signal.h>
+#include <csignal>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -25,12 +22,12 @@ int main(int argc, char* argv[])
     struct sigaction sigact{};
     struct sigaction sigpipe_act{};
 
-    sigact.sa_handler = &server.sigint_handler;
+    sigact.sa_handler = &Server::sigint_handler;
     sigpipe_act.sa_handler = SIG_IGN;
 
     try {
-        if (sigaction(SIGINT, &sigact, NULL) < 0 || sigaction(SIGTERM, &sigact, NULL) < 0 ||
-            sigaction(SIGPIPE, &sigpipe_act, NULL) < 0) {
+        if (sigaction(SIGINT, &sigact, nullptr) < 0 || sigaction(SIGTERM, &sigact, nullptr) < 0 ||
+            sigaction(SIGPIPE, &sigpipe_act, nullptr) < 0) {
             throw IRCException("Failed to setup signal handling");
         }
 
