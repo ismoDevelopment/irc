@@ -1,11 +1,5 @@
 #include "Channel.hpp"
 
-Channel::Channel() : _name(""), _topic(""), _inviteOnly(false),
-	_topicLocked(false), _hasPassword(false), _hasUserLimit(false), _userLimit(0)
-{
-
-}
-
 Channel::Channel(const std::string &name) : _name(name), _topic(""), _inviteOnly(false),
 	_topicLocked(false), _hasPassword(false), _hasUserLimit(false), _userLimit(0)
 {
@@ -42,6 +36,22 @@ bool Channel::isEmpty() const
 size_t Channel::getMemberCount() const
 {
 	return _members.size();
+}
+
+std::string Channel::get_members() const
+{
+	std::string result("");
+
+	for (auto it = _members.begin(); it != _members.end(); ++it)
+	{
+		if (it != _members.begin())
+			result += ' ';
+		if (isOperator(*it))
+			result += '@';
+		result += (*it)->get_nickname();
+	}
+
+	return result;
 }
 
 void Channel::broadcastMessage(const std::string &message, Client *excludeClient) const

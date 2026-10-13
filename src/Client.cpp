@@ -1,23 +1,35 @@
 #include "Client.hpp"
 
-Client::Client(int fd) : _fd(fd)
+Client::Client(int fd, int epoll_fd) : _fd(fd), _epoll_fd(epoll_fd)
 {
 	_hasNick = false;
 	_hasUser = false;
 	_hasPassword = false;
+	_has_quit = false;
 	_welcomeSent = false;
 	_nickname = "*";
 	_username = "*";
+	_host = "0.0.0.0";
 }
 
-const	std::string&	Client::get_nickname(void)
+std::string	Client::get_nickname(void) const
 {
 	return (_nickname);
 }
 
-const	std::string&	Client::get_username(void)
+std::string	Client::get_username(void) const
 {
 	return (_username);
+}
+
+std::string	Client::get_prefix(void) const
+{
+	return (get_nickname() + "!" + get_username() + "@" + _host);
+}
+
+int	Client::get_fd(void) const
+{
+	return (_fd);
 }
 
 void	Client::set_nickname(std::string nickname)
@@ -33,6 +45,11 @@ void	Client::set_username(std::string username)
 
 }
 
+void	Client::set_host(std::string host)
+{
+	this->_host = host;
+}
+
 void	Client::set_password(void)
 {
 	this->_hasPassword = true;
@@ -41,6 +58,21 @@ void	Client::set_password(void)
 bool	Client::is_registered() const
 {
 	return _hasPassword && _hasNick && _hasUser;
+}
+
+bool	Client::has_id_without_password() const
+{
+	return _hasNick && _hasUser && !_hasPassword;
+}
+
+bool	Client::has_quit() const
+{
+	return _has_quit;
+}
+
+void	Client::set_quit()
+{
+	_has_quit = true;
 }
 
 bool	Client::hasWelcomed(void) const
@@ -53,35 +85,23 @@ void	Client::setWelcomed(void)
 	_welcomeSent = true;
 }
 
-void	Client::add_buffer(std::string received)
+void	Client::add_read_buffer(std::string received)
 {
-	_buffer += received;
+	_read_buffer += received;
 }
 
 void	Client::write_to_client(std::string	message)
 {
-	if (send(_fd, message.c_str(), message.size(), 0) < 0)
-		throw IRCException("send syscall failed");
+	_write_buffer += message;
+	modify_epollout(_fd, _epoll_fd, true);
 }
 
-void	Client::process_buffer()
+std::string &Client::get_read_buffer(void)
 {
-	size_t	delim_index = _buffer.find("\r\n");
+	return (_read_buffer);
+}
 
-	while (delim_index != std::string::npos)
-	{
-		std::string_view	message{_buffer};
-
-		message = message.substr(0, delim_index);
-		if (message.compare("CAP LS 302") == 0)
-			write_to_client("CAP * LS :");
-		if (message.compare("JOIN :") == 0)
-		{
-			if (!is_registered())
-				write_to_client(ERR_NOTREGISTERED(_username));
-		}
-		std::cout << "[" << _fd << "] " << "message: " << message << std::endl;
-		_buffer.erase(0, message.size() + 2);
-		delim_index = _buffer.find("\r\n");
-	}
+std::string	&Client::get_write_buffer(void)
+{
+	return (_write_buffer);
 }

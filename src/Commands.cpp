@@ -1,94 +1,114 @@
-#include "Commands.hpp"
+#include "Server.hpp"
 
-void checkRegistration(Client &client)
+void Server::checkRegistration(Client &client)
 {
 	if (client.is_registered() && !client.hasWelcomed())
 	{
-		client.write_to_client("001 " + client.get_nickname() + " :Welcome to the IRC server!\r\n");
+		client.write_to_client(":" + _hostname + " 001 " + client.get_nickname() + " :Welcome to the IRC server!\r\n");
 		client.setWelcomed();
 	}
+	else if (client.has_id_without_password())
+		client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
 }
 
-void handleNick(Client& client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick)
+void Server::handleNick(Client& client, const ParsedCommand &cmd)
 {
-	if (cmd.params.empty())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
-		client.write_to_client("431 :No Nickname\r\n");
+		client.write_to_client(ERR_NONICKNAMEGIVEN(_hostname, client.get_nickname()));
 		return;
 	}
 
 	const std::string &newNick = cmd.params[0];
 
-	std::map<std::string, Client*>::iterator it = clientsByNick.find(newNick);
-	if (it != clientsByNick.end() && it->second != &client)
+	if (NICKNAME_FORBIDDEN_FIRST.find(newNick.front()) != newNick.npos ||
+		newNick.find_first_of(NICKNAME_FORBIDDEN) != newNick.npos ||
+		newNick.size() > MAX_NICK_SIZE)
 	{
-		client.write_to_client("433 " + newNick + " :Nickname is already in use\r\n");
+		client.write_to_client(ERR_ERRONEUSNICKNAME(_hostname, client.get_nickname(), newNick));
+		return;
+	}
+
+	std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(to_IRClower(newNick));
+
+	if (it != _clients_by_nickname.end() && it->second != &client)
+	{
+		client.write_to_client(ERR_NICKNAMEINUSE(_hostname, client.get_nickname(), newNick));
 		return;
 	}
 
 	std::string oldNick = client.get_nickname();
+	bool nickChange = client.is_registered() && oldNick != newNick;
+	std::string oldPrefix;
+
+	if (nickChange)
+		oldPrefix = client.get_prefix();
+
 	if (!oldNick.empty())
-		clientsByNick.erase(oldNick);
+		_clients_by_nickname.erase(to_IRClower(oldNick));
 
 	client.set_nickname(newNick);
-	clientsByNick[newNick] = &client;
+	_clients_by_nickname[to_IRClower(newNick)] = &client;
 
-	checkRegistration(client);
+	if (nickChange)
+	{
+		std::string message = ":" + oldPrefix + " NICK " + newNick + "\r\n";
+
+		client.write_to_client(message);
+		for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); ++it)
+		{
+			if (it->second->hasMember(&client))
+				it->second->broadcastMessage(message, &client);
+		}
+	}
 }
 
-void handlePass(Client &client, const ParsedCommand &cmd, const std::string &serverPass)
+void Server::handlePass(Client &client, const ParsedCommand &cmd)
 {
 	if (client.is_registered())
 	{
-		client.write_to_client("462 :You may not reregister\r\n");
+		client.write_to_client(ERR_ALREADYREGISTRED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 PASS :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "PASS"));
 		return;
 	}
 
-	if (cmd.params[0] != serverPass)
+	if (cmd.params[0] != _password)
 	{
-		client.write_to_client("464 :Password incorrect\r\n");
+		client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
 		return;
 	}
 
 	client.set_password();
-	checkRegistration(client);
+	checkRegistration(client);;
 }
 
-void handleUser(Client &client, const ParsedCommand &cmd)
+void Server::handleUser(Client &client, const ParsedCommand &cmd)
 {
 	if (client.is_registered())
 	{
-		client.write_to_client("462 :You may not reregister\r\n");
+		client.write_to_client(ERR_ALREADYREGISTRED(_hostname, client.get_nickname()));
 		return;
 	}
 
 	if (cmd.params.size() < 4)
 	{
-		client.write_to_client("461 USER :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "USER"));
 		return;
 	}
 
-	client.set_username(cmd.params[0]);
-	checkRegistration(client);
+	client.set_username(sanitize_username(cmd.params[0], USERNAME_FORBIDDEN, MAX_USERNAME_SIZE));
 }
 
-void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::string, Client*>& clientsByNick, std::map<std::string, Channel*>& channelsByName)
+void Server::handlePrivmsg(Client &sender, const ParsedCommand &cmd)
 {
-	if (!sender.is_registered())
-	{
-		sender.write_to_client("451 :You have not resgistered\r\n");
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
-		sender.write_to_client("461 PRIVMSG :Not enough parameters\r\n");
+		sender.write_to_client(ERR_NEEDMOREPARAMS(_hostname, sender.get_nickname(), "PRIVMSG"));
 		return;
 	}
 
@@ -97,36 +117,36 @@ void handlePrivmsg(Client &sender, const ParsedCommand &cmd, std::map<std::strin
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = channelsByName.find(target);
-		if (it == channelsByName.end())
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(target));
+		if (it == _channels_by_name.end())
 		{
-			sender.write_to_client("403 " + target + " :No such channel\r\n");
+			sender.write_to_client(ERR_NOSUCHCHANNEL(_hostname, sender.get_nickname(), target));
 			return;
 		}
 
 		Channel *channel = it->second;
 		if (!channel->hasMember(&sender))
 		{
-			sender.write_to_client("404 " + target + " :Cannot send to channel\r\n");
+			sender.write_to_client(ERR_CANNOTSENDTOCHAN(_hostname, sender.get_nickname(), target));
 			return;
 		}
-		channel->broadcastMessage(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
+		channel->broadcastMessage(":" + sender.get_prefix() + " PRIVMSG " + target + " :" + message + "\r\n", &sender);
 	}
 	else
 	{
-		std::map<std::string, Client*>::iterator it = clientsByNick.find(target);
-		if (it == clientsByNick.end())
+		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(to_IRClower(target));
+		if (it == _clients_by_nickname.end())
 		{
-			sender.write_to_client("401 " + target + " :No such nick\r\n");
+			sender.write_to_client(ERR_NOSUCHNICK(_hostname, sender.get_nickname(), target));
 			return;
 		}
 
-		it->second->write_to_client(":" + sender.get_nickname() + " PRIVMSG " + target + " :" + message + "\r\n");
+		it->second->write_to_client(":" + sender.get_prefix() + " PRIVMSG " + target + " :" + message + "\r\n");
 	}
 
 }
 
-void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string, Client*>& clientsByNick, std::map<std::string, Channel*>& channelsByName)
+void Server::handleNotice(Client &sender, const ParsedCommand &cmd)
 {
 	if (!sender.is_registered())
 		return;
@@ -139,63 +159,68 @@ void handleNotice(Client &sender, const ParsedCommand &cmd, std::map<std::string
 
 	if (!target.empty() && target[0] == '#')
 	{
-		std::map<std::string, Channel*>::iterator it = channelsByName.find(target);
-		if (it == channelsByName.end())
+		std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(target));
+		if (it == _channels_by_name.end())
 			return;
 
 		Channel *channel = it->second;
 		if (!channel->hasMember(&sender))
 			return;
 
-		channel->broadcastMessage(":" + sender.get_nickname() + " NOTICE " + target + " :" + message + "\r\n", &sender);
+		channel->broadcastMessage(":" + sender.get_prefix() + " NOTICE " + target + " :" + message + "\r\n", &sender);
 	}
 	else
 	{
-		std::map<std::string, Client*>::iterator it = clientsByNick.find(target);
-		if (it == clientsByNick.end())
+		std::map<std::string, Client*>::iterator it = _clients_by_nickname.find(to_IRClower(target));
+		if (it == _clients_by_nickname.end())
 			return;
 
-		it->second->write_to_client(":" + sender.get_nickname() + " NOTICE " + target + " :" + message + "\r\n");
+		it->second->write_to_client(":" + sender.get_prefix() + " NOTICE " + target + " :" + message + "\r\n");
 	}
 }
 
-void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
-{
-	if (!client.is_registered())
-	{
-		client.write_to_client("451 :You have not registered\r\n");
-		return;
-	}
+// static void send_names_reply(Client &client, const ParsedCommand &cmd)
+// {
 
-	if (cmd.params.empty())
+// }
+
+void Server::handleJoin(Client &client, const ParsedCommand &cmd)
+{
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
-		client.write_to_client("461 JOIN :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "JOIN"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
+	if ((channelName.front() != '#' && channelName.front() != '&') ||
+		channelName.size() < 2 ||
+		channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos ||
+		channelName.size() > MAX_CHANNEL_NAME_SIZE)
+	{
+		client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
+		return;
+	}
+
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 	Channel *channel;
-	bool isNewChannel = (it == channelsByName.end());
+	bool isNewChannel = (it == _channels_by_name.end());
 
 	if (isNewChannel)
 	{
 		channel = new Channel(channelName);
-		channelsByName[channelName] = channel;
+		_channels_by_name[to_IRClower(channelName)] = channel;
 	}
 	else
 		channel = it->second;
 
 	if (channel->hasMember(&client))
-	{
-		client.write_to_client("443 " + client.get_nickname() + " " + channelName + " :is already on channel\r\n");
 		return;
-	}
 
 	if (channel->isInviteOnly() && !channel->isInvited(&client))
 	{
-		client.write_to_client("473 " + channelName + " :Cannot join channel (+i)\r\n");
+		client.write_to_client(ERR_INVITEONLYCHAN(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -207,14 +232,14 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 		if (pass != channel->getPassword())
 		{
-			client.write_to_client("475 " + channelName + " :Cannot join channel (+k)\r\n");
+			client.write_to_client(ERR_BADCHANNELKEY(_hostname, client.get_nickname(), channelName));
 			return;
 		}
 	}
 
 	if (channel->hasUserLimit() && channel->getMemberCount() >= channel->getUserLimit())
 	{
-		client.write_to_client("471 " + channelName + " :Cannot join channel (+l)\r\n");
+		client.write_to_client(ERR_CHANNELISFULL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -222,63 +247,59 @@ void handleJoin(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 	if (isNewChannel)
 		channel->addOperator(&client);
 
-	channel->broadcastMessage(":" + client.get_nickname() + " JOIN " + channelName + "\r\n");
+	channel->broadcastMessage(":" + client.get_prefix() + " JOIN " + channelName + "\r\n");
+
+	if (channel->getTopic().empty())
+		client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
+	else
+		client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
+
+	client.write_to_client(RPL_NAMREPLY(_hostname, client.get_nickname(), channel->getName(), channel->get_members()));
+	client.write_to_client(RPL_ENDOFNAMES(_hostname, client.get_nickname(), channel->getName()));
 }
 
-void handlePart(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+void Server::handlePart(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client("451 :You have not registered\r\n");
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 PART :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "PART"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
-	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
 
-	if (it == channelsByName.end() || !it->second->hasMember(&client))
+	if (it == _channels_by_name.end() || !it->second->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You are not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = it->second;
-	channel->broadcastMessage(":" + client.get_nickname() + " PART " + channelName + "\r\n", NULL);
+	channel->broadcastMessage(":" + client.get_prefix() + " PART " + channelName + "\r\n", NULL);
 	channel->removeMember(&client);
 
 	if (channel->isEmpty())
 	{
 		delete channel;
-		channelsByName.erase(it);
+		_channels_by_name.erase(it);
 	}
 }
 
-void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string, Channel*> &channelsByName)
+void Server::handleTopic(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client("451 :You have not regisrtered\r\n");
-		return;
-	}
-
 	if (cmd.params.empty())
 	{
-		client.write_to_client("461 TOPIC :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "TOPIC"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator it = channelsByName.find(channelName);
-	if (it == channelsByName.end())
+	std::map<std::string, Channel*>::iterator it = _channels_by_name.find(to_IRClower(channelName));
+	if (it == _channels_by_name.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
@@ -286,190 +307,183 @@ void handleTopic(Client &client, const ParsedCommand &cmd, std::map<std::string,
 
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (cmd.params.size() == 1)
 	{
 		if (channel->getTopic().empty())
-			client.write_to_client("331 " + channelName + " :No topic is set\r\n");
+			client.write_to_client(RPL_NOTOPIC(_hostname, client.get_nickname(), channel->getName()));
 		else
-			client.write_to_client("332 " + channelName + " :" + channel->getTopic() + "\r\n");
+			client.write_to_client(RPL_TOPIC(_hostname, client.get_nickname(), channel->getName(), channel->getTopic()));
 		return;
 	}
 
 	if (channel->isTopicLocked() && !channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	const std::string &newTopic = cmd.params[1];
 	channel->setTopic(newTopic);
-	channel->broadcastMessage(":" + client.get_nickname() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
+	channel->broadcastMessage(":" + client.get_prefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
 }
 
-void handleInvite(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleInvite(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client("451 :You have not registered\r\n");
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client("461 INVITE :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "INVITE"));
 		return;
 	}
 
 	const std::string &targetNick = cmd.params[0];
 	const std::string &channelName = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator itChannel = channelsByName.find(channelName);
-	if (itChannel == channelsByName.end())
+	std::map<std::string, Channel*>::iterator itChannel = _channels_by_name.find(to_IRClower(channelName));
+	if (itChannel == _channels_by_name.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = itChannel->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
-	std::map<std::string, Client*>::iterator itClient = clientsByNick.find(targetNick);
-	if (itClient == clientsByNick.end())
+	std::map<std::string, Client*>::iterator itClient = _clients_by_nickname.find(to_IRClower(targetNick));
+	if (itClient == _clients_by_nickname.end())
 	{
-		client.write_to_client("401 " + targetNick + " :No such nick\r\n");
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
 
 	Client *targetClient = itClient->second;
 	if (channel->hasMember(targetClient))
 	{
-		client.write_to_client("443 " + targetNick + " " + channelName + " :is already on channel\r\n");
+		client.write_to_client(ERR_USERONCHANNEL(_hostname, client.get_nickname(), targetNick, channelName));
 		return;
 	}
 
 	channel->addInvited(targetClient);
 
-	client.write_to_client("341 " + targetNick + " " + channelName + "\r\n");
-	targetClient->write_to_client(":" + client.get_nickname() + " INVITE " + targetNick + " " + channelName + "\r\n");
+	client.write_to_client(RPL_INVITING(_hostname, client.get_nickname(), targetNick, channelName));
+	targetClient->write_to_client(":" + client.get_prefix() + " INVITE " + targetNick + " " + channelName + "\r\n");
 }
 
-void handleKick(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleKick(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
-	{
-		client.write_to_client("451 :You have not registered\r\n");
-		return;
-	}
-
 	if (cmd.params.size() < 2)
 	{
-		client.write_to_client("461 KICK :Not enough parameters\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "KICK"));
 		return;
 	}
 
 	const std::string &channelName = cmd.params[0];
 	const std::string &targetNick = cmd.params[1];
 
-	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
-	if (chIt == channelsByName.end())
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(channelName));
+	if (chIt == _channels_by_name.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), channelName));
 		return;
 	}
 
-	std::map<std::string, Client*>::iterator userIt = clientsByNick.find(targetNick);
-	if (userIt == clientsByNick.end())
+	std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
+	if (userIt == _clients_by_nickname.end())
 	{
-		client.write_to_client("401 " + targetNick + " :No such nick\r\n");
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
 		return;
 	}
 
 	Client *targetClient = userIt->second;
 	if (!channel->hasMember(targetClient))
 	{
-		client.write_to_client("441 " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+		client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, client.get_nickname(), targetNick, channelName));
 		return;
 	}
 
 	if (cmd.params.size() >= 3)
 	{
 		const std::string &reason = cmd.params[2];
-		channel->broadcastMessage(":" + client.get_nickname() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n", NULL);
+		channel->broadcastMessage(":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + " :" + reason + "\r\n", NULL);
 	}
 	else
-		channel->broadcastMessage(":" + client.get_nickname() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
+		channel->broadcastMessage(":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
 
 	channel->removeMember(targetClient);
 	if (channel->isEmpty())
 	{
 		delete channel;
-		channelsByName.erase(chIt);
+		_channels_by_name.erase(chIt);
 	}
 }
 
-void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleMode(Client &client, const ParsedCommand &cmd)
 {
-	if (!client.is_registered())
+	if (cmd.params.empty() || cmd.params[0].empty())
 	{
-		client.write_to_client("451 :You have not registered\r\n");
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 		return;
 	}
 
-	if (cmd.params.empty())
-	{
-		client.write_to_client("461 MODE :Not enough parameters\r\n");
-		return;
-	}
+	if (cmd.params[0].front() == '#' || cmd.params[0].front() == '&')
+		handleModeChannel(client, cmd);
+	else
+		handleModeUser(client, cmd);
+}
 
-	const std::string &channelName = cmd.params[0];
+void Server::handleModeChannel(Client &client, const ParsedCommand &cmd)
+{
+	const std::string &targetChannel = cmd.params[0];
 
-	std::map<std::string, Channel*>::iterator chIt = channelsByName.find(channelName);
-	if (chIt == channelsByName.end())
+	std::map<std::string, Channel*>::iterator chIt = _channels_by_name.find(to_IRClower(targetChannel));
+	if (chIt == _channels_by_name.end())
 	{
-		client.write_to_client("403 " + channelName + " :No such channel\r\n");
+		client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetChannel));
 		return;
 	}
 
 	Channel *channel = chIt->second;
 	if (!channel->hasMember(&client))
 	{
-		client.write_to_client("442 " + channelName + " :You're not on that channel\r\n");
+		client.write_to_client(ERR_NOTONCHANNEL(_hostname, client.get_nickname(), targetChannel));
 		return;
 	}
 
 	if (cmd.params.size() < 2)
+	{
+		client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 		return;
+	}
 
 	if (!channel->isOperator(&client))
 	{
-		client.write_to_client("482 " + channelName + " :You're not channel operator\r\n");
+		client.write_to_client(ERR_CHANOPRIVSNEEDED(_hostname, client.get_nickname(), targetChannel));
 		return;
 	}
 
@@ -522,7 +536,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 				{
 					if (index >= cmd.params.size())
 					{
-						client.write_to_client("461 MODE :Not enough parameters\r\n");
+						client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 						break;
 					}
 					channel->setPassword(cmd.params[index]);
@@ -542,16 +556,16 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 			{
 				if (index >= cmd.params.size())
 				{
-					client.write_to_client("461 MODE :Not enough parameters\r\n");
+					client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 					break;
 				}
 				const std::string &targetNick = cmd.params[index];
 				index++;
 
-				std::map<std::string, Client*>::iterator userIt = clientsByNick.find(targetNick);
-				if (userIt == clientsByNick.end() || !channel->hasMember(userIt->second))
+				std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
+				if (userIt == _clients_by_nickname.end() || !channel->hasMember(userIt->second))
 				{
-					client.write_to_client("441 " + targetNick + " " + channelName + " :Not present on that channel\r\n");
+					client.write_to_client(ERR_USERNOTINCHANNEL(_hostname, client.get_nickname(), targetNick, targetChannel));
 					break;
 				}
 
@@ -576,7 +590,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 				{
 					if (index >= cmd.params.size())
 					{
-						client.write_to_client("461 MODE :Not enough parameters\r\n");
+						client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
 						break;
 					}
 
@@ -598,7 +612,7 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 			}
 			default:
 			{
-				client.write_to_client("472 " + std::string(1, c) + " :unknown mode char\r\n");
+				client.write_to_client(ERR_UNKNOWNMODE(_hostname, client.get_nickname(), std::string(1, c)));
 				break;
 			}
 		}
@@ -606,16 +620,41 @@ void handleMode(Client &client, const ParsedCommand &cmd, std::map<std::string, 
 
 	if (!appliedFlags.empty())
 	{
-		std::string confirm = ":" + client.get_nickname() + " MODE " + channelName + " " + appliedFlags;
+		std::string confirm = ":" + client.get_prefix() + " MODE " + targetChannel + " " + appliedFlags;
 		for (size_t i = 0; i < appliedParams.size(); i++)
 			confirm += " " + appliedParams[i];
 		channel->broadcastMessage(confirm + "\r\n", NULL);
 	}
 }
 
-void handleCleanup(Client &client, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleModeUser(Client &client, const ParsedCommand &cmd)
 {
-	for (std::map<std::string, Channel*>::iterator it = channelsByName.begin(); it != channelsByName.end(); )
+	const std::string &targetNick = cmd.params[0];
+	std::map<std::string, Client*>::iterator userIt = _clients_by_nickname.find(to_IRClower(targetNick));
+	if (userIt == _clients_by_nickname.end())
+	{
+		client.write_to_client(ERR_NOSUCHNICK(_hostname, client.get_nickname(), targetNick));
+		return;
+	}
+
+	if (userIt->second != &client)
+	{
+		client.write_to_client(ERR_USERSDONTMATCH(_hostname, client.get_nickname()));
+		return;
+	}
+
+	if (cmd.params.size() < 2 || cmd.params[1].empty())
+	{
+		client.write_to_client(RPL_UMODEIS(_hostname, client.get_nickname(), "+"));
+		return;
+	}
+
+	client.write_to_client(ERR_UMODEUNKNOWNFLAG(_hostname, client.get_nickname()));
+}
+
+void Server::handleCleanup(Client &client)
+{
+	for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); )
 	{
 		Channel *channel = it->second;
 		if (channel->hasMember(&client))
@@ -624,7 +663,7 @@ void handleCleanup(Client &client, std::map<std::string, Client*> &clientsByNick
 		if (channel->isEmpty())
 		{
 			delete channel;
-			channelsByName.erase(it++);
+			_channels_by_name.erase(it++);
 		}
 		else
 			++it;
@@ -632,35 +671,39 @@ void handleCleanup(Client &client, std::map<std::string, Client*> &clientsByNick
 
 	std::string nick = client.get_nickname();
 	if (!nick.empty())
-		clientsByNick.erase(nick);
+		_clients_by_nickname.erase(to_IRClower(nick));
 }
 
-void handleQuit(Client &client, const ParsedCommand &cmd, std::map<std::string, Client*> &clientsByNick, std::map<std::string, Channel*> &channelsByName)
+void Server::handleQuit(Client &client, const ParsedCommand &cmd)
 {
+	if (client.has_quit())
+		return;
+
 	std::string reason;
 	if (cmd.params.size() >= 1)
 		reason = cmd.params[0];
 	else
-		reason = "I go";
+		reason = "Unknown reason";
 
-	for (std::map<std::string, Channel*>::iterator it = channelsByName.begin(); it != channelsByName.end(); ++it)
+	for (std::map<std::string, Channel*>::iterator it = _channels_by_name.begin(); it != _channels_by_name.end(); ++it)
 	{
 		Channel *channel = it->second;
 		if (channel->hasMember(&client))
-			channel->broadcastMessage(":" + client.get_nickname() + " QUIT :" + reason + "\r\n", &client);
+			channel->broadcastMessage(":" + client.get_prefix() + " QUIT :" + reason + "\r\n", &client);
 	}
 
-	handleCleanup(client, clientsByNick, channelsByName);
+	handleCleanup(client);
+	client.set_quit();
 }
 
-void handlePing(Client &client, const ParsedCommand &cmd)
+void Server::handlePing(Client &client, const ParsedCommand &cmd)
 {
 	if (cmd.params.empty())
 	{
-		client.write_to_client("409 :No origin specified\r\n");
+		client.write_to_client(ERR_NOORIGIN(_hostname, client.get_nickname()));
 		return;
 	}
 
-	const std::string &server = cmd.params[0];
-	client.write_to_client("PONG " + server + "\r\n");
+	const std::string &token = cmd.params[0];
+	client.write_to_client(":" + _hostname + " PONG " + _hostname + " :" + token + "\r\n");
 }
