@@ -4,5 +4,8 @@ ignore/
 /irc_server
 /ircserv
 *.sh
+.clang-format
+.clang-tidy
+.clangd
 # /en.subject.pdf
 # /TODO.md
