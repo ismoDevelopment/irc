@@ -21,7 +21,7 @@
 #include "client_replies.hpp"
 #include "ParsedCommand.hpp"
 
-#define	S_MAX_PENDING 5
+#define	S_MAX_PENDING 64
 #define S_MAX_EVENTS 10
 #define MAX_NICK_SIZE 30
 #define MAX_USERNAME_SIZE 18
