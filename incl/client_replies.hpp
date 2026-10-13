@@ -45,8 +45,9 @@
 #define ERR_PASSWDMISMATCH(prefix, target) \
     (":" + (prefix) + " 464 " + (target) + " :Password incorrect\r\n")
 
-#define ERR_USERNOTINCHANNEL(prefix, target, nick, channel) \
-    (":" + (prefix) + " 441 " + (target) + " " + (nick) + " " + (channel) + " :They aren't on that channel\r\n")
+#define ERR_USERNOTINCHANNEL(prefix, target, nick, channel)                 \
+    (":" + (prefix) + " 441 " + (target) + " " + (nick) + " " + (channel) + \
+     " :They aren't on that channel\r\n")
 
 #define ERR_NOTONCHANNEL(prefix, target, channel) \
     (":" + (prefix) + " 442 " + (target) + " " + (channel) + " :You're not on that channel\r\n")
@@ -54,8 +55,9 @@
 #define ERR_CHANOPRIVSNEEDED(prefix, target, channel) \
     (":" + (prefix) + " 482 " + (target) + " " + (channel) + " :You're not channel operator\r\n")
 
-#define ERR_USERONCHANNEL(prefix, target, nick, channel) \
-    (":" + (prefix) + " 443 " + (target) + " " + (nick) + " " + (channel) + " :is already on channel\r\n")
+#define ERR_USERONCHANNEL(prefix, target, nick, channel)                    \
+    (":" + (prefix) + " 443 " + (target) + " " + (nick) + " " + (channel) + \
+     " :is already on channel\r\n")
 
 #define ERR_UNKNOWNMODE(prefix, target, mode) \
     (":" + (prefix) + " 472 " + (target) + " " + (mode) + " :is unknown mode char to me\r\n")
