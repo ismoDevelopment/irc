@@ -46,3 +46,4 @@ Run the executable as follows with the port and password as arguments
 ## Resources
 - [https://modern.ircdocs.horse/#numeric-replies](https://modern.ircdocs.horse/#numeric-replies)
 - [https://www.cs.cmu.edu/~mukesh/15-441/proj1/rfc-html/chapter4.html#c4_2_1](https://www.cs.cmu.edu/~mukesh/15-441/proj1/rfc-html/chapter4.html#c4_2_1)
+- [EPOLL LT vs ET](https://isdn4linux.org/2026/08/25/how-epoll-works-in-linux-internals-edge-triggered-vs-level-triggered-and-code-examples/)
