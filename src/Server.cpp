@@ -9,7 +9,7 @@
 #include <list>
 #include <map>
 #include <netinet/in.h>
-#include <signal.h>
+#include <csignal>
 #include <sstream>
 #include <string_view>
 #include <sys/epoll.h>
@@ -40,14 +40,16 @@ Server::Server(uint16_t port, std::string password)
     _commands_map["QUIT"] = &Server::handleQuit;
 }
 
-std::string Server::get_hostname(void) const
+std::string Server::get_hostname() const
 {
-    return (_hostname);
+    return _hostname;
 }
 
 void Server::sigint_handler(int signum)
 {
-    if (signum == SIGINT || signum == SIGTERM) _interrupted = true;
+    if (signum == SIGINT || signum == SIGTERM) {
+        _interrupted = true;
+    }
 }
 
 static ParsedCommand parseLine(const std::string& line)
@@ -72,7 +74,9 @@ static ParsedCommand parseLine(const std::string& line)
         return cmd;
     }
     cmd.command = tokens[0];
-    for (size_t i = 1; i < tokens.size(); i++) cmd.params.push_back(tokens[i]);
+    for (size_t i = 1; i < tokens.size(); i++) {
+        cmd.params.push_back(tokens[i]);
+    }
     return cmd;
 }
 
@@ -86,13 +90,16 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
 {
     auto cmd_it = _commands_map.find(cmd.command);
 
-    if (cmd_it == end(_commands_map))
+    if (cmd_it == end(_commands_map)) {
         client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " +
                                cmd.command + " :Unknown command\r\n");
-    else if (!client.is_registered() && needs_register(cmd.command))
+    }
+    else if (!client.is_registered() && needs_register(cmd.command)) {
         client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
-    else
-        (this->*(cmd_it->second))(client, cmd);
+    }
+    else {
+        (this->*cmd_it->second)(client, cmd);
+    }
     checkRegistration(client);
 }
 
@@ -105,7 +112,7 @@ void Server::process_read_buffer(Client& client)
         std::string message = read_buffer.substr(0, delim_index);
         ParsedCommand command = parseLine(message);
 
-        std::cout << "[" << client.get_fd() << "] " << "message: " << message << std::endl;
+        std::cout << "[" << client.get_fd() << "] " << "message: " << message << '\n';
 
         read_buffer.erase(0, message.size() + 2);
         dispatch(client, command);
@@ -115,29 +122,33 @@ void Server::process_read_buffer(Client& client)
 
 void Server::process_write_buffer(Client& client)
 {
-    ssize_t n = 0;
     std::string& write_buffer = client.get_write_buffer();
 
-    if (write_buffer.size() == 0) return;
-
-    if ((n = send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0)) < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-        int fd = client.get_fd();
-        int err = errno;
-        std::cout << "[" << fd << "] send error: " << std::strerror(err) << " -- drop client now"
-                  << std::endl;
-        erase_client(fd);
+    if (write_buffer.size() == 0) {
         return;
     }
-    if (n != (ssize_t)write_buffer.size()) {
-        write_buffer.erase(0, n);
+
+    ssize_t len = send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0);
+
+    if (len < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return;
+        }
+        int err = errno;
+        std::cout << "[" << client.get_fd() << "] send error: " << std::strerror(err)
+                  << " -- drop client now" << '\n';
+        erase_client(client.get_fd());
+        return;
+    }
+    if (len != static_cast<ssize_t>(write_buffer.size())) {
+        write_buffer.erase(0, len);
         return;
     }
     write_buffer.clear();
     modify_epollout(client.get_fd(), _epollfd, false);
 }
 
-void Server::wait_incoming(void)
+void Server::wait_incoming()
 {
     if (_interrupted) {
         this->stop(nullptr, 0);
@@ -147,7 +158,9 @@ void Server::wait_incoming(void)
     int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, -1);
 
     if (nfds < 0) {
-        if (errno == EINTR) this->stop(nullptr, 0);
+        if (errno == EINTR) {
+            this->stop(nullptr, 0);
+        }
         this->stop("epoll_wait syscall failed", 1);
     }
 
@@ -158,28 +171,31 @@ void Server::wait_incoming(void)
             int client_fd = accept(_socketfd, (struct sockaddr*)&peerAddr, &peerLen);
             Client new_client(client_fd, _epollfd);
 
-            if (client_fd < 0) this->stop("accept() syscall failed", 1);
+            if (client_fd < 0) {
+                this->stop("accept() syscall failed", 1);
+            }
 
             char host[INET_ADDRSTRLEN];
-            if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr)
+            if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
                 new_client.set_host(host);
-            std::cout << "[" << client_fd << "] accepted socket: " << host << std::endl;
+            }
+            std::cout << "[" << client_fd << "] accepted socket: " << host << '\n';
 
             set_nonblock(client_fd);
 
-            epoll_event ev{};
+            epoll_event event{};
 
-            ev.events = EPOLLIN;
-            ev.data.fd = client_fd;
-            if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &ev) == -1) {
+            event.events = EPOLLIN;
+            event.data.fd = client_fd;
+            if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1) {
                 close(client_fd);
                 this->stop("epoll_ctl() syscall failed", 1);
             }
             add_client(new_client);
             continue;
         }
-        if (events[i].events & EPOLLHUP || events[i].events & EPOLLERR) {
-            std::cout << "[" << events[i].data.fd << "] closing socket" << std::endl;
+        if (((events[i].events & EPOLLHUP) != 0) || ((events[i].events & EPOLLERR) != 0)) {
+            std::cout << "[" << events[i].data.fd << "] closing socket" << '\n';
             epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
             erase_client(events[i].data.fd);
             continue;
@@ -188,31 +204,31 @@ void Server::wait_incoming(void)
         auto client_it = _clients_by_fd.find(events[i].data.fd);
 
         if (client_it == end(_clients_by_fd)) {
-            std::cout << "[" << events[i].data.fd << "] unable to find client in map" << std::endl;
+            std::cout << "[" << events[i].data.fd << "] unable to find client in map" << '\n';
             close(events[i].data.fd);
             continue;
         }
-        Client& client = *(client_it->second);
+        Client& client = *client_it->second;
 
         if (events[i].events & EPOLLIN) {
             char received[1024]{};
-            ssize_t n = recv(events[i].data.fd, &received, 1024, 0);
+            ssize_t len = recv(events[i].data.fd, &received, 1024, 0);
 
-            while (n > 0) {
+            while (len > 0) {
                 client.add_read_buffer(received);
-                n = recv(events[i].data.fd, &received, 1024, 0);
+                len = recv(events[i].data.fd, &received, 1024, 0);
             }
-            if (n == 0) {
-                std::cout << "[" << events[i].data.fd << "] shut down" << std::endl;
+            if (len == 0) {
+                std::cout << "[" << events[i].data.fd << "] shut down" << '\n';
 
                 epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
                 erase_client(events[i].data.fd);
                 continue;
             }
-            if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            if (len < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
                 int err = errno;
                 std::cout << "[" << events[i].data.fd << "] recv error: " << std::strerror(err)
-                          << " -- drop client now" << std::endl;
+                          << " -- drop client now" << '\n';
                 erase_client(events[i].data.fd);
                 continue;
             }
@@ -237,9 +253,11 @@ void Server::erase_client(int fd)
 
     auto map_it = _clients_by_fd.find(fd);
 
-    if (map_it == end(_clients_by_fd)) return;
+    if (map_it == end(_clients_by_fd)) {
+        return;
+    }
 
-    Client& client = *(map_it->second);
+    Client& client = *map_it->second;
     std::string nickname = client.get_nickname();
 
     handleQuit(client, ParsedCommand());
@@ -252,38 +270,54 @@ void Server::erase_client(int fd)
 void Server::start()
 {
     _socketfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (_socketfd < 0) this->stop("socket() syscall failed", 1);
-    if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0)
+    if (_socketfd < 0) {
+        this->stop("socket() syscall failed", 1);
+    }
+    if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0) {
         this->stop("Failed to set socket option", 1);
+    }
 
     sockaddr_in serverAddr{};
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = _port;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(_socketfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0)
+    if (bind(_socketfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
         this->stop("bind() syscall failed", 1);
-    if (listen(_socketfd, S_MAX_PENDING) < 0) this->stop("listen() syscall failed", 1);
+    }
+    if (listen(_socketfd, S_MAX_PENDING) < 0) {
+        this->stop("listen() syscall failed", 1);
+    }
     set_nonblock(_socketfd);
     _epollfd = epoll_create1(0);
 
-    if (_epollfd < 0) this->stop("Failed to create epoll", 1);
+    if (_epollfd < 0) {
+        this->stop("Failed to create epoll", 1);
+    }
 
-    epoll_event ev{};
+    epoll_event event{};
 
-    ev.events = EPOLLIN;
-    ev.data.fd = _socketfd;
+    event.events = EPOLLIN;
+    event.data.fd = _socketfd;
 
-    if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &ev) < 0)
+    if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &event) < 0) {
         this->stop("epoll_ctl syscall failed", 1);
+    }
 
-    while (true) wait_incoming();
+    while (true) {
+        wait_incoming();
+    }
 }
 
 void Server::stop(const char* message, int exit_code)
 {
+    if (errno == EINTR) {
+        errno = 0;
+    }
     int saved_errno = errno;
 
-    while (!_clients.empty()) erase_client(_clients.front().get_fd());
+    while (!_clients.empty()) {
+        erase_client(_clients.front().get_fd());
+    }
 
     _commands_map.clear();
 
@@ -297,7 +331,12 @@ void Server::stop(const char* message, int exit_code)
         _socketfd = -1;
     }
 
-    if (message) std::cout << message << std::endl;
-    if (saved_errno > 0) std::cout << "strerror: " << std::strerror(saved_errno) << std::endl;
+    if (message != nullptr) {
+        std::cout << message << '\n';
+    }
+    if (saved_errno > 0) {
+        std::cout << "strerror: " << std::strerror(saved_errno);
+    }
+    std::cout << '\n';
     exit(exit_code);
 }

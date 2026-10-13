@@ -1,10 +1,10 @@
 #include "Channel.hpp"
 #include <set>
 #include <string>
+#include <utility>
 
-Channel::Channel(const std::string& name)
-    : _name(name),
-      _topic(""),
+Channel::Channel(std::string name)
+    : _name(std::move(name)),
       _inviteOnly(false),
       _topicLocked(false),
       _hasPassword(false),
@@ -47,12 +47,16 @@ size_t Channel::getMemberCount() const
 
 std::string Channel::get_members() const
 {
-    std::string result("");
+    std::string result;
 
-    for (auto it = _members.begin(); it != _members.end(); ++it) {
-        if (it != _members.begin()) result += ' ';
-        if (isOperator(*it)) result += '@';
-        result += (*it)->get_nickname();
+    for (auto iter = _members.begin(); iter != _members.end(); ++iter) {
+        if (iter != _members.begin()) {
+            result += ' ';
+        }
+        if (isOperator(*iter)) {
+            result += '@';
+        }
+        result += (*iter)->get_nickname();
     }
 
     return result;
@@ -60,9 +64,10 @@ std::string Channel::get_members() const
 
 void Channel::broadcastMessage(const std::string& message, Client* excludeClient) const
 {
-    for (std::set<Client*>::const_iterator it = _members.begin(); it != _members.end(); ++it) {
-        if (*it != excludeClient) {
-            (*it)->write_to_client(message);
+    for (std::set<Client*>::const_iterator iter = _members.begin(); iter != _members.end();
+         ++iter) {
+        if (*iter != excludeClient) {
+            (*iter)->write_to_client(message);
         }
     }
 }

@@ -17,8 +17,8 @@
 int main(int argc, char* argv[])
 {
     if (argc != 3) {
-        std::cout << ("USAGE: ./ircserv <port> <password>") << std::endl;
-        return (1);
+        std::cout << "USAGE: ./ircserv <port> <password>" << '\n';
+        return 1;
     }
 
     Server server(convert_to_port(argv[1]), argv[2]);
@@ -30,13 +30,14 @@ int main(int argc, char* argv[])
 
     try {
         if (sigaction(SIGINT, &sigact, NULL) < 0 || sigaction(SIGTERM, &sigact, NULL) < 0 ||
-            sigaction(SIGPIPE, &sigpipe_act, NULL) < 0)
+            sigaction(SIGPIPE, &sigpipe_act, NULL) < 0) {
             throw IRCException("Failed to setup signal handling");
+        }
 
         server.start();
     }
     catch (const std::exception& ex) {
-        std::cout << ex.what() << std::endl;
+        std::cout << ex.what() << '\n';
         server.stop(nullptr, 1);
     }
 }

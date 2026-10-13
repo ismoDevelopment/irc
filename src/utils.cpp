@@ -18,42 +18,48 @@ uint16_t convert_to_port(const char* str)
 {
     unsigned long port = std::stoul(str, nullptr, 10);
 
-    if (port > UINT16_MAX) throw IRCException("Port out of range");
-    return (htons((uint16_t)port));
+    if (port > UINT16_MAX) {
+        throw IRCException("Port out of range");
+    }
+    return htons((uint16_t)port);
 }
 
 void set_nonblock(int fd)
 {
-    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) throw IRCException("fcntl() syscall failed");
+    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+        throw IRCException("fcntl() syscall failed");
+    }
 }
 
 std::string to_IRClower(std::string str)
 {
-    for (auto it = begin(str); it < end(str); it++) {
-        switch (*it) {
+    for (auto iter = begin(str); iter < end(str); iter++) {
+        switch (*iter) {
             case '[':
-                *it = '{';
+                *iter = '{';
                 break;
             case ']':
-                *it = '}';
+                *iter = '}';
                 break;
             case '\\':
-                *it = '|';
+                *iter = '|';
                 break;
             default:
-                *it = tolower(*it);
+                *iter = tolower(*iter);
         }
     }
-    return (str);
+    return str;
 }
 
-std::string sanitize_username(std::string username, const std::string_view forbidden_chars,
+std::string sanitize_username(std::string username, std::string_view forbidden_chars,
                               size_t max_size)
 {
     std::string sanitized;
 
-    for (std::string::iterator it = username.begin(); it != username.end(); ++it) {
-        if (forbidden_chars.find(*it) == forbidden_chars.npos) sanitized.push_back(*it);
+    for (char & iter : username) {
+        if (forbidden_chars.find(iter) == std::string_view::npos) {
+            sanitized.push_back(iter);
+        }
     }
     if (sanitized.size() > max_size) {
         sanitized = sanitized.substr(0, max_size);
@@ -61,16 +67,19 @@ std::string sanitize_username(std::string username, const std::string_view forbi
     if (sanitized.empty()) {
         sanitized = "user";
     }
-    return (sanitized);
+    return sanitized;
 }
 
 void modify_epollout(int fd, int epoll_fd, bool active)
 {
-    epoll_event ev{};
+    epoll_event event{};
 
-    ev.events = EPOLLIN;
-    if (active) ev.events |= EPOLLOUT;
-    ev.data.fd = fd;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) < 0)
+    event.events = EPOLLIN;
+    if (active) {
+        event.events |= EPOLLOUT;
+    }
+    event.data.fd = fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) < 0) {
         throw IRCException("epoll_ctl() syscall failed");
+    }
 }
