@@ -5,7 +5,7 @@
 
 class Channel {
    public:
-    Channel(const std::string& name);
+    Channel(std::string name);
 
     [[nodiscard]] const std::string& getName() const;
 

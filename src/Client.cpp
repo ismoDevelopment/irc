@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include "utils.hpp"
 #include <cstring>
+#include <utility>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
@@ -19,44 +20,44 @@ Client::Client(int fd, int epoll_fd) : _fd(fd), _epoll_fd(epoll_fd)
     _host = "0.0.0.0";
 }
 
-std::string Client::get_nickname(void) const
+std::string Client::get_nickname() const
 {
-    return (_nickname);
+    return _nickname;
 }
 
-std::string Client::get_username(void) const
+std::string Client::get_username() const
 {
-    return (_username);
+    return _username;
 }
 
-std::string Client::get_prefix(void) const
+std::string Client::get_prefix() const
 {
     return (get_nickname() + "!" + get_username() + "@" + _host);
 }
 
-int Client::get_fd(void) const
+int Client::get_fd() const
 {
-    return (_fd);
+    return _fd;
 }
 
 void Client::set_nickname(std::string nickname)
 {
-    this->_nickname = nickname;
+    this->_nickname = std::move(nickname);
     this->_hasNick = true;
 }
 
 void Client::set_username(std::string username)
 {
-    this->_username = username;
+    this->_username = std::move(username);
     this->_hasUser = true;
 }
 
 void Client::set_host(std::string host)
 {
-    this->_host = host;
+    this->_host = std::move(host);
 }
 
-void Client::set_password(void)
+void Client::set_password()
 {
     this->_hasPassword = true;
 }
@@ -81,12 +82,12 @@ void Client::set_quit()
     _has_quit = true;
 }
 
-bool Client::hasWelcomed(void) const
+bool Client::hasWelcomed() const
 {
     return _welcomeSent;
 }
 
-void Client::setWelcomed(void)
+void Client::setWelcomed()
 {
     _welcomeSent = true;
 }
@@ -102,12 +103,12 @@ void Client::write_to_client(std::string message)
     modify_epollout(_fd, _epoll_fd, true);
 }
 
-std::string& Client::get_read_buffer(void)
+std::string& Client::get_read_buffer()
 {
-    return (_read_buffer);
+    return _read_buffer;
 }
 
-std::string& Client::get_write_buffer(void)
+std::string& Client::get_write_buffer()
 {
-    return (_write_buffer);
+    return _write_buffer;
 }
