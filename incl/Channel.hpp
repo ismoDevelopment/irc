@@ -6,7 +6,6 @@
 class Channel
 {
 	public:
-		Channel();
 		Channel(const std::string &name);
 
 		const std::string &getName() const;

@@ -1,11 +1,5 @@
 #include "Channel.hpp"
 
-Channel::Channel() : _name(""), _topic(""), _inviteOnly(false),
-	_topicLocked(false), _hasPassword(false), _hasUserLimit(false), _userLimit(0)
-{
-
-}
-
 Channel::Channel(const std::string &name) : _name(name), _topic(""), _inviteOnly(false),
 	_topicLocked(false), _hasPassword(false), _hasUserLimit(false), _userLimit(0)
 {

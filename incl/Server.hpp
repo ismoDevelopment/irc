@@ -32,25 +32,25 @@ class Server {
 		typedef std::list<Client> t_clients;
 		typedef void (Server::*CommandHandler)(Client &, const ParsedCommand &);
 
-		int									_epollfd;
-		int									_socketfd;
-		int									_reuse_addr_value;
-		uint16_t							_port;
-		std::string							_password;
-		std::string							_hostname;
-		t_clients							_clients;
-		std::map<int, t_clients::iterator>	_clients_by_fd;
-		std::map<std::string, Client *>		_clients_by_nickname;
-		std::map<std::string, Channel *>	_channels_by_name;
-		std::map<std::string, CommandHandler> _commands_map;
-		void	wait_incoming(void);
-		void	process_read_buffer(Client &client);
-		void	process_write_buffer(Client &client);
-		static bool							_interrupted;
-		static constexpr std::string_view	CHANNEL_NAME_FORBIDDEN = " ,\a";
-		static constexpr std::string_view	NICKNAME_FORBIDDEN = " ,*? !@";
-		static constexpr std::string_view	NICKNAME_FORBIDDEN_FIRST = "$:#&+%~";
-		static constexpr std::string_view	USERNAME_FORBIDDEN = "!@";
+		int										_epollfd;
+		int										_socketfd;
+		int										_reuse_addr_value;
+		uint16_t								_port;
+		std::string								_password;
+		std::string								_hostname;
+		t_clients								_clients;
+		std::map<int, t_clients::iterator>		_clients_by_fd;
+		std::map<std::string, Client *>			_clients_by_nickname;
+		std::map<std::string, Channel *>		_channels_by_name;
+		std::map<std::string, CommandHandler> 	_commands_map;
+		void									wait_incoming(void);
+		void									process_read_buffer(Client &client);
+		void									process_write_buffer(Client &client);
+		static bool								_interrupted;
+		static constexpr std::string_view		CHANNEL_NAME_FORBIDDEN = " ,\a";
+		static constexpr std::string_view		NICKNAME_FORBIDDEN = " ,*? !@";
+		static constexpr std::string_view		NICKNAME_FORBIDDEN_FIRST = "$:#&+%~";
+		static constexpr std::string_view		USERNAME_FORBIDDEN = "!@";
 
 	public:
 		Server(uint16_t port, std::string password);
