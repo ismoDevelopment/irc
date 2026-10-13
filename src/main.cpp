@@ -20,20 +20,13 @@ int	main(int argc, char *argv[])
 		if (sigaction(SIGINT, &sigact, NULL) < 0
 			|| sigaction(SIGTERM, &sigact, NULL) < 0
 			|| sigaction(SIGPIPE, &sigpipe_act, NULL) < 0)
-			throw IRCException("Failed to setup signal handling", errno);
+			throw IRCException("Failed to setup signal handling");
 
 		server.start();
-	}
-	catch (const IRCException &ex)
-	{
-		std::cout << ex.what() << std::endl;
-		if (ex.get_errno() > 0)
-			std::cout << "strerror: " << std::strerror(ex.get_errno()) << std::endl;
-		exit(1);
 	}
 	catch (const std::exception &ex)
 	{
 		std::cout << ex.what() << std::endl;
-		exit(1);
+		server.stop(nullptr, 1);
 	}
 }
