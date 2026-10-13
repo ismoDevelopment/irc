@@ -32,8 +32,8 @@ void Server::handleNick(Client& client, const ParsedCommand& cmd)
 
     const std::string& newNick = cmd.params[0];
 
-    if (NICKNAME_FORBIDDEN_FIRST.find(newNick.front()) != newNick.npos ||
-        newNick.find_first_of(NICKNAME_FORBIDDEN) != newNick.npos ||
+    if (NICKNAME_FORBIDDEN_FIRST.find(newNick.front()) != std::string::npos ||
+        newNick.find_first_of(NICKNAME_FORBIDDEN) != std::string::npos ||
         newNick.size() > MAX_NICK_SIZE) {
         client.write_to_client(ERR_ERRONEUSNICKNAME(_hostname, client.get_nickname(), newNick));
         return;
@@ -205,7 +205,7 @@ void Server::handleJoin(Client& client, const ParsedCommand& cmd)
     const std::string& channelName = cmd.params[0];
 
     if ((channelName.front() != '#' && channelName.front() != '&') || channelName.size() < 2 ||
-        channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != channelName.npos ||
+        channelName.find_first_of(CHANNEL_NAME_FORBIDDEN) != std::string::npos ||
         channelName.size() > MAX_CHANNEL_NAME_SIZE) {
         client.write_to_client(ERR_BADCHANMASK(_hostname, client.get_nickname(), channelName));
         return;
@@ -470,8 +470,7 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
 {
     const std::string& targetChannel = cmd.params[0];
 
-    std::map<std::string, Channel*>::iterator chIt =
-        _channels_by_name.find(to_IRClower(targetChannel));
+    auto chIt = _channels_by_name.find(to_IRClower(targetChannel));
     if (chIt == _channels_by_name.end()) {
         client.write_to_client(ERR_NOSUCHCHANNEL(_hostname, client.get_nickname(), targetChannel));
         return;
@@ -593,7 +592,7 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
 
                     int limit = std::atoi(cmd.params[index].c_str());
                     if (limit > 0) {
-                        channel->setUserLimit((size_t)limit);
+                        channel->setUserLimit(static_cast<size_t>(limit));
                         appliedFlags += "+l";
                         appliedParams.push_back(cmd.params[index]);
                     }
@@ -676,7 +675,7 @@ void Server::handleQuit(Client& client, const ParsedCommand& cmd)
     }
 
     std::string reason;
-    if (cmd.params.size() >= 1) {
+    if (!cmd.params.empty()) {
         reason = cmd.params[0];
     }
     else {

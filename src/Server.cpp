@@ -18,11 +18,12 @@
 
 #include <arpa/inet.h>
 #include <climits>
+#include <utility>
 
 bool Server::_interrupted = false;
 
 Server::Server(uint16_t port, std::string password)
-    : _epollfd(-1), _socketfd(-1), _port(port), _password(password), _hostname("ft_irc")
+    : _epollfd(-1), _socketfd(-1), _port(port), _password(std::move(password)), _hostname("ft_irc")
 {
     _reuse_addr_value = 1;
     _commands_map["NICK"] = &Server::handleNick;
@@ -108,7 +109,7 @@ void Server::process_read_buffer(Client& client)
     std::string& read_buffer = client.get_read_buffer();
     size_t delim_index = read_buffer.find("\r\n");
 
-    while (delim_index != read_buffer.npos) {
+    while (delim_index != std::string::npos) {
         std::string message = read_buffer.substr(0, delim_index);
         ParsedCommand command = parseLine(message);
 
@@ -210,7 +211,7 @@ void Server::wait_incoming()
         }
         Client& client = *client_it->second;
 
-        if (events[i].events & EPOLLIN) {
+        if ((events[i].events & EPOLLIN) != 0) {
             char received[1024]{};
             ssize_t len = recv(events[i].data.fd, &received, 1024, 0);
 
@@ -234,7 +235,7 @@ void Server::wait_incoming()
             }
             process_read_buffer(client);
         }
-        if (events[i].events & EPOLLOUT) {
+        if ((events[i].events & EPOLLOUT) != 0) {
             process_write_buffer(client);
         }
     }
@@ -281,7 +282,7 @@ void Server::start()
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = _port;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    if (bind(_socketfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+    if (bind(_socketfd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
         this->stop("bind() syscall failed", 1);
     }
     if (listen(_socketfd, S_MAX_PENDING) < 0) {

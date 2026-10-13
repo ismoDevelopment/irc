@@ -1,6 +1,7 @@
 #include "Client.hpp"
 #include "utils.hpp"
 #include <cstring>
+#include <utility>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
@@ -41,19 +42,19 @@ int Client::get_fd() const
 
 void Client::set_nickname(std::string nickname)
 {
-    this->_nickname = nickname;
+    this->_nickname = std::move(nickname);
     this->_hasNick = true;
 }
 
 void Client::set_username(std::string username)
 {
-    this->_username = username;
+    this->_username = std::move(username);
     this->_hasUser = true;
 }
 
 void Client::set_host(std::string host)
 {
-    this->_host = host;
+    this->_host = std::move(host);
 }
 
 void Client::set_password()

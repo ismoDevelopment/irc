@@ -56,7 +56,7 @@ std::string sanitize_username(std::string username, std::string_view forbidden_c
 {
     std::string sanitized;
 
-    for (char & iter : username) {
+    for (char& iter : username) {
         if (forbidden_chars.find(iter) == std::string_view::npos) {
             sanitized.push_back(iter);
         }
