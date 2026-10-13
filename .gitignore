@@ -7,5 +7,6 @@ ignore/
 .clang-format
 .clang-tidy
 .clangd
+/compile_commands.json
 # /en.subject.pdf
 # /TODO.md
