@@ -18,6 +18,7 @@
 #define MAX_NICK_SIZE 30
 #define MAX_USERNAME_SIZE 18
 #define MAX_CHANNEL_NAME_SIZE 50
+#define MAX_MESSAGE_SIZE 510
 
 class Server {
    private:

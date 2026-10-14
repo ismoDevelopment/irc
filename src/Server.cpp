@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "client_replies.hpp"
 #include "utils.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -108,14 +109,17 @@ void Server::process_read_buffer(Client& client)
     size_t delim_index = read_buffer.find("\r\n");
 
     while (delim_index != std::string::npos) {
-        std::string message = read_buffer.substr(0, delim_index);
+        std::string message = read_buffer.substr(0, std::min<size_t>(delim_index, MAX_MESSAGE_SIZE));
         ParsedCommand command = parseLine(message);
 
         std::cout << "[" << client.get_fd() << "] " << "message: " << message << '\n';
 
-        read_buffer.erase(0, message.size() + 2);
+        read_buffer.erase(0, delim_index + 2);
         dispatch(client, command);
         delim_index = read_buffer.find("\r\n");
+    }
+    if (read_buffer.size() > MAX_MESSAGE_SIZE) {
+        read_buffer.resize(MAX_MESSAGE_SIZE);
     }
 }
 
@@ -214,7 +218,8 @@ void Server::wait_incoming()
             ssize_t len = recv(events[i].data.fd, &received, 1024, 0);
 
             while (len > 0) {
-                client.add_read_buffer(received);
+                client.add_read_buffer(std::string(received, len));
+                process_read_buffer(client);
                 len = recv(events[i].data.fd, &received, 1024, 0);
             }
             if (len == 0) {
@@ -231,7 +236,6 @@ void Server::wait_incoming()
                 erase_client(events[i].data.fd);
                 continue;
             }
-            process_read_buffer(client);
         }
         if ((events[i].events & EPOLLOUT) != 0) {
             process_write_buffer(client);
