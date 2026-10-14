@@ -13,8 +13,17 @@ const char* IRCException::what() const noexcept
     return this->_message;
 }
 
-uint16_t convert_to_port(const char* str)
+uint16_t convert_to_port(const std::string& str)
 {
+    if (str.empty()) {
+        throw IRCException("Invalid port");
+    }
+    for (char c : str) {
+        if (c < '0' || c > '9') {
+            throw IRCException("Invalid port");
+        }
+    }
+
     unsigned long port = std::stoul(str);
 
     if (port > UINT16_MAX) {

@@ -17,7 +17,7 @@ class IRCException : public std::exception {
     [[nodiscard]] const char* what() const noexcept override;
 };
 
-uint16_t convert_to_port(const char* str);
+uint16_t convert_to_port(const std::string& str);
 void set_nonblock(int fd);
 std::string to_IRClower(std::string str);
 std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,
