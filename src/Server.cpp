@@ -179,11 +179,15 @@ int Server::wait_incoming()
             sockaddr_in peerAddr{};
             socklen_t peerLen = sizeof(peerAddr);
             int client_fd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
-            Client new_client(client_fd, _epollfd);
 
             if (client_fd < 0) {
-                throw IRCException("accept() syscall failed");
+                int err = errno;
+                if (err != EAGAIN && err != EWOULDBLOCK) {
+                    std::cout << "accept() failed: " << std::strerror(err) << '\n';
+                }
+                continue;
             }
+            Client new_client(client_fd, _epollfd);
 
             char host[INET_ADDRSTRLEN];
             if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
@@ -198,8 +202,11 @@ int Server::wait_incoming()
             event.events = EPOLLIN;
             event.data.fd = client_fd;
             if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1) {
+                int err = errno;
+                std::cout << "[" << client_fd << "] epoll_ctl() ADD failed: " << std::strerror(err)
+                          << " -- drop client now" << '\n';
                 close(client_fd);
-                throw IRCException("epoll_ctl() syscall failed");
+                continue;
             }
             add_client(new_client);
             continue;

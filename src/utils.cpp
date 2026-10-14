@@ -94,7 +94,8 @@ void modify_epollout(int fd, int epoll_fd, bool active)
     }
     event.data.fd = fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) < 0) {
-        std::cout << "[" << fd << "] epoll_ctl() MOD failed: " << std::strerror(errno)
+        int err = errno;
+        std::cout << "[" << fd << "] epoll_ctl() MOD failed: " << std::strerror(err)
                   << " -- drop client now" << '\n';
         shutdown(fd, SHUT_RDWR);
     }
