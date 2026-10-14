@@ -1,10 +1,14 @@
 #include "utils.hpp"
 #include <arpa/inet.h>
+#include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 
 IRCException::IRCException(const char* msg) : _message(msg) {}
 
@@ -90,6 +94,8 @@ void modify_epollout(int fd, int epoll_fd, bool active)
     }
     event.data.fd = fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) < 0) {
-        throw IRCException("epoll_ctl() syscall failed");
+        std::cout << "[" << fd << "] epoll_ctl() MOD failed: " << std::strerror(errno)
+                  << " -- drop client now" << '\n';
+        shutdown(fd, SHUT_RDWR);
     }
 }

@@ -98,8 +98,12 @@ void Client::add_read_buffer(const std::string& received)
 
 void Client::write_to_client(const std::string& message)
 {
+    bool was_empty = _write_buffer.empty();
+
     _write_buffer += message;
-    modify_epollout(_fd, _epoll_fd, true);
+    if (was_empty) {
+        modify_epollout(_fd, _epoll_fd, true);
+    }
 }
 
 std::string& Client::get_read_buffer()
