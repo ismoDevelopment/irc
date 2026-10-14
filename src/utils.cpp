@@ -41,20 +41,20 @@ void set_nonblock(int fd)
 
 std::string to_IRClower(std::string str)
 {
-    for (auto iter = begin(str); iter < end(str); iter++) {
-        switch (*iter) {
+    for (char& c : str) {
+        switch (c) {
             case '[':
-                *iter = '{';
+                c = '{';
                 break;
             case ']':
-                *iter = '}';
+                c = '}';
                 break;
             case '\\':
-                *iter = '|';
+                c = '|';
                 break;
             default:
-                if (*iter >= 'A' && *iter <= 'Z') {
-                    *iter += 'a' - 'A';
+                if (c >= 'A' && c <= 'Z') {
+                    c += 'a' - 'A';
                 }
         }
     }
