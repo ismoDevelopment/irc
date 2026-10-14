@@ -206,10 +206,8 @@ int Server::wait_incoming()
         }
         if (((events[i].events & EPOLLHUP) != 0) || ((events[i].events & EPOLLERR) != 0)) {
             std::cout << "[" << events[i].data.fd << "] closing socket" << '\n';
-            if (epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr) != 0)
-            {
-                throw IRCException("epoll_ctl() syscall failed");
-            }
+            erase_client(events[i].data.fd);
+            continue;
         }
 
         auto client_it = _clients_by_fd.find(events[i].data.fd);
@@ -232,11 +230,6 @@ int Server::wait_incoming()
             }
             if (len == 0) {
                 std::cout << "[" << events[i].data.fd << "] shut down" << '\n';
-
-                if (epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr) != 0)
-                {
-                    throw IRCException("epoll_ctl() syscall failed");
-                }
                 erase_client(events[i].data.fd);
                 continue;
             }
@@ -264,8 +257,6 @@ void Server::add_client(Client& client)
 
 void Server::erase_client(int fd)
 {
-    epoll_ctl(_epollfd, EPOLL_CTL_DEL, fd, nullptr);
-
     auto map_it = _clients_by_fd.find(fd);
 
     if (map_it == end(_clients_by_fd)) {
@@ -336,7 +327,6 @@ void Server::stop()
     _commands_map.clear();
 
     if (_epollfd > 0) {
-        epoll_ctl(_epollfd, EPOLL_CTL_DEL, _epollfd, nullptr);
         close(_epollfd);
         _epollfd = -1;
     }
