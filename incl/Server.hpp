@@ -3,6 +3,7 @@
 #include "Channel.hpp"
 #include "Client.hpp"
 #include "ParsedCommand.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <fcntl.h>
 #include <list>
@@ -12,14 +13,6 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
-#define S_MAX_PENDING 64
-#define S_MAX_EVENTS 10
-#define MAX_NICK_SIZE 30
-#define MAX_USERNAME_SIZE 18
-#define MAX_CHANNEL_NAME_SIZE 50
-#define MAX_MESSAGE_SIZE 510
-#define READ_BUFFER_SIZE 1024
 
 class Server {
    private:
@@ -41,6 +34,14 @@ class Server {
     void process_read_buffer(Client& client);
     void process_write_buffer(Client& client);
     static bool _interrupted;
+
+    static constexpr int S_MAX_PENDING = 64;
+    static constexpr int S_MAX_EVENTS = 10;
+    static constexpr size_t MAX_NICK_SIZE = 30;
+    static constexpr size_t MAX_USERNAME_SIZE = 18;
+    static constexpr size_t MAX_CHANNEL_NAME_SIZE = 50;
+    static constexpr size_t MAX_MESSAGE_SIZE = 510;
+    static constexpr size_t READ_BUFFER_SIZE = 1024;
     static constexpr std::string_view CHANNEL_NAME_FORBIDDEN = " ,\a";
     static constexpr std::string_view NICKNAME_FORBIDDEN = " ,*? !@";
     static constexpr std::string_view NICKNAME_FORBIDDEN_FIRST = "$:#&+%~";
