@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <netinet/in.h>
+#include <optional>
 #include <csignal>
 #include <string>
 #include <sys/epoll.h>
@@ -18,23 +19,29 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    Server server(convert_to_port(argv[1]), argv[2]);
-    struct sigaction sigact{};
-    struct sigaction sigpipe_act{};
-
-    sigact.sa_handler = &Server::sigint_handler;
-    sigpipe_act.sa_handler = SIG_IGN;
+    std::optional<Server> server;
 
     try {
+        server.emplace(convert_to_port(argv[1]), argv[2]);
+
+        struct sigaction sigact{};
+        struct sigaction sigpipe_act{};
+
+        sigact.sa_handler = &Server::sigint_handler;
+        sigpipe_act.sa_handler = SIG_IGN;
+
         if (sigaction(SIGINT, &sigact, nullptr) < 0 || sigaction(SIGTERM, &sigact, nullptr) < 0 ||
             sigaction(SIGPIPE, &sigpipe_act, nullptr) < 0) {
             throw IRCException("Failed to setup signal handling");
         }
 
-        server.start();
+        server->start();
     }
     catch (const std::exception& ex) {
         std::cout << ex.what() << '\n';
-        server.stop(nullptr, 1);
+        if (server.has_value()) {
+            server->stop(nullptr, 1);
+        }
+        return 1;
     }
 }
