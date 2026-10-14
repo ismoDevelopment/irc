@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     catch (const std::exception& ex) {
         std::cout << ex.what() << '\n';
         if (server.has_value()) {
-            server->stop(nullptr, 1);
+            server->stop(nullptr);
         }
         return 1;
     }

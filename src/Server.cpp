@@ -156,10 +156,11 @@ void Server::process_write_buffer(Client& client)
     modify_epollout(client.get_fd(), _epollfd, false);
 }
 
-void Server::wait_incoming()
+int Server::wait_incoming()
 {
     if (_interrupted) {
-        this->stop(nullptr, 0);
+        this->stop(nullptr);
+        return SIGINT + 128;
     }
 
     epoll_event events[S_MAX_EVENTS]{};
@@ -167,9 +168,11 @@ void Server::wait_incoming()
 
     if (nfds < 0) {
         if (errno == EINTR) {
-            this->stop(nullptr, 0);
+            this->stop(nullptr);
+            return SIGINT + 128;
         }
-        this->stop("epoll_wait syscall failed", 1);
+        this->stop("epoll_wait syscall failed");
+        return 1;
     }
 
     for (int i{}; i < nfds; i++) {
@@ -180,7 +183,8 @@ void Server::wait_incoming()
             Client new_client(client_fd, _epollfd);
 
             if (client_fd < 0) {
-                this->stop("accept() syscall failed", 1);
+                this->stop("accept() syscall failed");
+                return 1;
             }
 
             char host[INET_ADDRSTRLEN];
@@ -197,7 +201,8 @@ void Server::wait_incoming()
             event.data.fd = client_fd;
             if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1) {
                 close(client_fd);
-                this->stop("epoll_ctl() syscall failed", 1);
+                this->stop("epoll_ctl() syscall failed");
+                return 1;
             }
             add_client(new_client);
             continue;
@@ -246,6 +251,7 @@ void Server::wait_incoming()
             process_write_buffer(client);
         }
     }
+    return 0;
 }
 
 void Server::add_client(Client& client)
@@ -279,10 +285,12 @@ void Server::start()
 {
     _socketfd = socket(AF_INET, SOCK_STREAM, 0);
     if (_socketfd < 0) {
-        this->stop("socket() syscall failed", 1);
+        this->stop("socket() syscall failed");
+        return;
     }
     if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0) {
-        this->stop("Failed to set socket option", 1);
+        this->stop("Failed to set socket option");
+        return;
     }
 
     sockaddr_in serverAddr{};
@@ -290,16 +298,19 @@ void Server::start()
     serverAddr.sin_port = _port;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     if (bind(_socketfd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
-        this->stop("bind() syscall failed", 1);
+        this->stop("bind() syscall failed");
+        return;
     }
     if (listen(_socketfd, S_MAX_PENDING) < 0) {
-        this->stop("listen() syscall failed", 1);
+        this->stop("listen() syscall failed");
+        return;
     }
     set_nonblock(_socketfd);
     _epollfd = epoll_create1(0);
 
     if (_epollfd < 0) {
-        this->stop("Failed to create epoll", 1);
+        this->stop("Failed to create epoll");
+        return;
     }
 
     epoll_event event{};
@@ -308,15 +319,16 @@ void Server::start()
     event.data.fd = _socketfd;
 
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &event) < 0) {
-        this->stop("epoll_ctl syscall failed", 1);
+        this->stop("epoll_ctl syscall failed");
+        return;
     }
 
-    while (true) {
-        wait_incoming();
+    while (wait_incoming() == 0) {
+        
     }
 }
 
-void Server::stop(const char* message, int exit_code)
+void Server::stop(const char* message)
 {
     if (errno == EINTR) {
         errno = 0;
@@ -346,5 +358,4 @@ void Server::stop(const char* message, int exit_code)
         std::cout << "strerror: " << std::strerror(saved_errno);
     }
     std::cout << '\n';
-    exit(exit_code);
 }
