@@ -23,7 +23,7 @@ class Client {
     std::string _username;
 
    public:
-    Client(int fd, int epoll_fd);
+    Client(int client_fd, int epoll_fd);
     void set_nickname(std::string nickname);
     void set_username(std::string username);
     void set_host(std::string host);

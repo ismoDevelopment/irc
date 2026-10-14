@@ -167,7 +167,7 @@ void Server::wait_incoming()
         if (events[i].data.fd == _socketfd) {
             sockaddr_in peerAddr{};
             socklen_t peerLen = sizeof(peerAddr);
-            int client_fd = accept(_socketfd, (struct sockaddr*)&peerAddr, &peerLen);
+            int client_fd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
             Client new_client(client_fd, _epollfd);
 
             if (client_fd < 0) {

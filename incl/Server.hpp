@@ -4,8 +4,6 @@
 #include "Client.hpp"
 #include "ParsedCommand.hpp"
 #include <cstdint>
-#include <cstdlib>
-#include <cstring>
 #include <fcntl.h>
 #include <list>
 #include <map>
@@ -49,7 +47,7 @@ class Server {
    public:
     Server(uint16_t port, std::string password);
 
-    std::string get_hostname() const;
+    [[nodiscard]] std::string get_hostname() const;
     static bool needs_register(const std::string& command);
     void start();
     void stop(const char* message, int exit_code);
