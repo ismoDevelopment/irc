@@ -1,6 +1,5 @@
 #include "Client.hpp"
 #include "utils.hpp"
-#include <cstring>
 #include <utility>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -8,7 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-Client::Client(int fd, int epoll_fd) : _fd(fd), _epoll_fd(epoll_fd)
+Client::Client(int client_fd, int epoll_fd) : _fd(client_fd), _epoll_fd(epoll_fd)
 {
     _hasNick = false;
     _hasUser = false;
@@ -92,12 +91,12 @@ void Client::setWelcomed()
     _welcomeSent = true;
 }
 
-void Client::add_read_buffer(std::string received)
+void Client::add_read_buffer(const std::string& received)
 {
     _read_buffer += received;
 }
 
-void Client::write_to_client(std::string message)
+void Client::write_to_client(const std::string& message)
 {
     _write_buffer += message;
     modify_epollout(_fd, _epoll_fd, true);

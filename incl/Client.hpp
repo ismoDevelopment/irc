@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstring>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <string>
@@ -24,23 +23,23 @@ class Client {
     std::string _username;
 
    public:
-    Client(int fd, int epoll_fd);
+    Client(int client_fd, int epoll_fd);
     void set_nickname(std::string nickname);
     void set_username(std::string username);
     void set_host(std::string host);
     void set_password();
-    bool hasWelcomed() const;
+    [[nodiscard]] bool hasWelcomed() const;
     void setWelcomed();
-    std::string get_nickname() const;
-    std::string get_username() const;
-    std::string get_prefix() const;
-    bool has_quit() const;
+    [[nodiscard]] std::string get_nickname() const;
+    [[nodiscard]] std::string get_username() const;
+    [[nodiscard]] std::string get_prefix() const;
+    [[nodiscard]] bool has_quit() const;
     void set_quit();
-    int get_fd() const;
-    bool is_registered() const;
-    bool has_id_without_password() const;
-    void add_read_buffer(std::string received);
-    void write_to_client(std::string message);
+    [[nodiscard]] int get_fd() const;
+    [[nodiscard]] bool is_registered() const;
+    [[nodiscard]] bool has_id_without_password() const;
+    void add_read_buffer(const std::string& received);
+    void write_to_client(const std::string& message);
     std::string& get_write_buffer();
     std::string& get_read_buffer();
 };

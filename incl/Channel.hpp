@@ -16,7 +16,7 @@ class Channel {
     [[nodiscard]] bool isEmpty() const;
     [[nodiscard]] size_t getMemberCount() const;
     void broadcastMessage(const std::string& message, Client* excludeClient = nullptr) const;
-    std::string get_members() const;
+    [[nodiscard]] std::string get_members() const;
 
     // operators
     void addOperator(Client* client);
@@ -24,7 +24,7 @@ class Channel {
     bool isOperator(Client* client) const;
 
     // topic
-    const std::string& getTopic() const;
+    [[nodiscard]] const std::string& getTopic() const;
     void setTopic(const std::string& topic);
 
     // invited (mode +i)
@@ -33,19 +33,19 @@ class Channel {
     bool isInvited(Client* client) const;
 
     // modes
-    bool isInviteOnly() const;
+    [[nodiscard]] bool isInviteOnly() const;
     void setInviteOnly(bool inviteOnly);
 
-    bool isTopicLocked() const;
+    [[nodiscard]] bool isTopicLocked() const;
     void setTopicLocked(bool topicLocked);
 
-    bool hasPassword() const;
-    const std::string& getPassword() const;
+    [[nodiscard]] bool hasPassword() const;
+    [[nodiscard]] const std::string& getPassword() const;
     void setPassword(const std::string& password);
     void removePassword();
 
-    bool hasUserLimit() const;
-    size_t getUserLimit() const;
+    [[nodiscard]] bool hasUserLimit() const;
+    [[nodiscard]] size_t getUserLimit() const;
     void setUserLimit(size_t limit);
     void removeUserLimit();
 

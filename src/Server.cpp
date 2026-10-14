@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "client_replies.hpp"
 #include "utils.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -15,9 +16,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 #include <arpa/inet.h>
-#include <climits>
 #include <utility>
 
 bool Server::_interrupted = false;
@@ -81,7 +80,7 @@ static ParsedCommand parseLine(const std::string& line)
     return cmd;
 }
 
-bool Server::needs_register(const std::string& command) const
+bool Server::needs_register(const std::string& command)
 {
     return (command != "USER" && command != "NICK" && command != "PASS" && command != "NOTICE" &&
             command != "PING" && command != "QUIT");
@@ -110,14 +109,22 @@ void Server::process_read_buffer(Client& client)
     size_t delim_index = read_buffer.find("\r\n");
 
     while (delim_index != std::string::npos) {
-        std::string message = read_buffer.substr(0, delim_index);
+        std::string message =
+            read_buffer.substr(0, std::min<size_t>(delim_index, MAX_MESSAGE_SIZE));
         ParsedCommand command = parseLine(message);
 
         std::cout << "[" << client.get_fd() << "] " << "message: " << message << '\n';
 
-        read_buffer.erase(0, message.size() + 2);
+        read_buffer.erase(0, delim_index + 2);
         dispatch(client, command);
         delim_index = read_buffer.find("\r\n");
+    }
+    if (read_buffer.size() > MAX_MESSAGE_SIZE) {
+        bool cr_found = (read_buffer.back() == '\r');
+        read_buffer.resize(MAX_MESSAGE_SIZE);
+        if (cr_found) {
+            read_buffer.push_back('\r');
+        }
     }
 }
 
@@ -125,7 +132,7 @@ void Server::process_write_buffer(Client& client)
 {
     std::string& write_buffer = client.get_write_buffer();
 
-    if (write_buffer.size() == 0) {
+    if (write_buffer.empty()) {
         return;
     }
 
@@ -169,7 +176,7 @@ void Server::wait_incoming()
         if (events[i].data.fd == _socketfd) {
             sockaddr_in peerAddr{};
             socklen_t peerLen = sizeof(peerAddr);
-            int client_fd = accept(_socketfd, (struct sockaddr*)&peerAddr, &peerLen);
+            int client_fd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
             Client new_client(client_fd, _epollfd);
 
             if (client_fd < 0) {
@@ -212,12 +219,13 @@ void Server::wait_incoming()
         Client& client = *client_it->second;
 
         if ((events[i].events & EPOLLIN) != 0) {
-            char received[1024]{};
-            ssize_t len = recv(events[i].data.fd, &received, 1024, 0);
+            char received[READ_BUFFER_SIZE]{};
+            ssize_t len = recv(events[i].data.fd, &received, READ_BUFFER_SIZE, 0);
 
             while (len > 0) {
-                client.add_read_buffer(received);
-                len = recv(events[i].data.fd, &received, 1024, 0);
+                client.add_read_buffer(std::string(received, len));
+                process_read_buffer(client);
+                len = recv(events[i].data.fd, &received, READ_BUFFER_SIZE, 0);
             }
             if (len == 0) {
                 std::cout << "[" << events[i].data.fd << "] shut down" << '\n';
@@ -233,7 +241,6 @@ void Server::wait_incoming()
                 erase_client(events[i].data.fd);
                 continue;
             }
-            process_read_buffer(client);
         }
         if ((events[i].events & EPOLLOUT) != 0) {
             process_write_buffer(client);

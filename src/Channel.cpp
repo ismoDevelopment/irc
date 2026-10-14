@@ -64,10 +64,9 @@ std::string Channel::get_members() const
 
 void Channel::broadcastMessage(const std::string& message, Client* excludeClient) const
 {
-    for (std::set<Client*>::const_iterator iter = _members.begin(); iter != _members.end();
-         ++iter) {
-        if (*iter != excludeClient) {
-            (*iter)->write_to_client(message);
+    for (Client* member : _members) {
+        if (member != excludeClient) {
+            member->write_to_client(message);
         }
     }
 }

@@ -1,6 +1,5 @@
 #include "utils.hpp"
 #include <arpa/inet.h>
-#include <cctype>
 #include <cstdint>
 #include <fcntl.h>
 #include <string>
@@ -14,14 +13,23 @@ const char* IRCException::what() const noexcept
     return this->_message;
 }
 
-uint16_t convert_to_port(const char* str)
+uint16_t convert_to_port(const std::string& str)
 {
-    unsigned long port = std::stoul(str, nullptr, 10);
+    if (str.empty()) {
+        throw IRCException("Invalid port");
+    }
+    for (char c : str) {
+        if (c < '0' || c > '9') {
+            throw IRCException("Invalid port");
+        }
+    }
+
+    unsigned long port = std::stoul(str);
 
     if (port > UINT16_MAX) {
         throw IRCException("Port out of range");
     }
-    return htons((uint16_t)port);
+    return htons(static_cast<uint16_t>(port));
 }
 
 void set_nonblock(int fd)
@@ -33,30 +41,32 @@ void set_nonblock(int fd)
 
 std::string to_IRClower(std::string str)
 {
-    for (auto iter = begin(str); iter < end(str); iter++) {
-        switch (*iter) {
+    for (char& c : str) {
+        switch (c) {
             case '[':
-                *iter = '{';
+                c = '{';
                 break;
             case ']':
-                *iter = '}';
+                c = '}';
                 break;
             case '\\':
-                *iter = '|';
+                c = '|';
                 break;
             default:
-                *iter = tolower(*iter);
+                if (c >= 'A' && c <= 'Z') {
+                    c += 'a' - 'A';
+                }
         }
     }
     return str;
 }
 
-std::string sanitize_username(std::string username, std::string_view forbidden_chars,
+std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,
                               size_t max_size)
 {
     std::string sanitized;
 
-    for (char& iter : username) {
+    for (char iter : username) {
         if (forbidden_chars.find(iter) == std::string_view::npos) {
             sanitized.push_back(iter);
         }
