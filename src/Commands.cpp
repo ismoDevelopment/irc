@@ -276,7 +276,7 @@ void Server::handlePart(Client& client, const ParsedCommand& cmd)
     }
 
     Channel* channel = iter->second;
-    channel->broadcastMessage(":" + client.get_prefix() + " PART " + channelName + "\r\n", NULL);
+    channel->broadcastMessage(":" + client.get_prefix() + " PART " + channelName + "\r\n", nullptr);
     channel->removeMember(&client);
 
     if (channel->isEmpty()) {
@@ -483,8 +483,7 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
     std::string appliedFlags;
     std::vector<std::string> appliedParams;
 
-    for (size_t i = 0; i < modeString.size(); i++) {
-        char c = modeString[i];
+    for (char c : modeString) {
 
         if (c == '+') {
             plus = true;
@@ -599,8 +598,8 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
     if (!appliedFlags.empty()) {
         std::string confirm =
             ":" + client.get_prefix() + " MODE " + targetChannel + " " + appliedFlags;
-        for (size_t i = 0; i < appliedParams.size(); i++) {
-            confirm += " " + appliedParams[i];
+        for (const std::string& param : appliedParams) {
+            confirm += " " + param;
         }
         channel->broadcastMessage(confirm + "\r\n", NULL);
     }

@@ -1,6 +1,5 @@
 #include "utils.hpp"
 #include <arpa/inet.h>
-#include <cctype>
 #include <cstdint>
 #include <fcntl.h>
 #include <string>
@@ -16,7 +15,7 @@ const char* IRCException::what() const noexcept
 
 uint16_t convert_to_port(const char* str)
 {
-    unsigned long port = std::stoul(str, nullptr, 10);
+    unsigned long port = std::stoul(str);
 
     if (port > UINT16_MAX) {
         throw IRCException("Port out of range");
@@ -45,7 +44,9 @@ std::string to_IRClower(std::string str)
                 *iter = '|';
                 break;
             default:
-                *iter = static_cast<char>(std::tolower(static_cast<unsigned char>(*iter)));
+                if (*iter >= 'A' && *iter <= 'Z') {
+                    *iter += 'a' - 'A';
+                }
         }
     }
     return str;

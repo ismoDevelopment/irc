@@ -19,6 +19,7 @@
 #define MAX_USERNAME_SIZE 18
 #define MAX_CHANNEL_NAME_SIZE 50
 #define MAX_MESSAGE_SIZE 510
+#define READ_BUFFER_SIZE 1024
 
 class Server {
    private:
