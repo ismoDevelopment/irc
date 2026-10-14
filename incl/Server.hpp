@@ -52,8 +52,8 @@ class Server {
 
     [[nodiscard]] std::string get_hostname() const;
     static bool needs_register(const std::string& command);
-    void start();
-    void stop(const char* message);
+    int start();
+    void stop();
     void add_client(Client& client);
     void erase_client(int fd);
     void checkRegistration(Client& client);
