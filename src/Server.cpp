@@ -195,7 +195,13 @@ int Server::wait_incoming()
             }
             std::cout << "[" << client_fd << "] accepted socket: " << host << '\n';
 
-            set_nonblock(client_fd);
+            if (!set_nonblock(client_fd)) {
+                int err = errno;
+                std::cout << "[" << client_fd << "] fcntl() failed: " << std::strerror(err)
+                          << " -- drop client now" << '\n';
+                close(client_fd);
+                continue;
+            }
 
             epoll_event event{};
 
@@ -300,7 +306,9 @@ int Server::start()
     if (listen(_socketfd, S_MAX_PENDING) < 0) {
         throw IRCException("listen() syscall failed");
     }
-    set_nonblock(_socketfd);
+    if (!set_nonblock(_socketfd)) {
+        throw IRCException("fcntl() syscall failed");
+    }
     _epollfd = epoll_create1(0);
 
     if (_epollfd < 0) {

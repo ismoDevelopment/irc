@@ -36,11 +36,9 @@ uint16_t convert_to_port(const std::string& str)
     return htons(static_cast<uint16_t>(port));
 }
 
-void set_nonblock(int fd)
+bool set_nonblock(int fd)
 {
-    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-        throw IRCException("fcntl() syscall failed");
-    }
+    return fcntl(fd, F_SETFL, O_NONBLOCK) >= 0;
 }
 
 std::string to_IRClower(std::string str)
