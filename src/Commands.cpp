@@ -573,7 +573,7 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
                         break;
                     }
 
-                    int limit = std::atoi(cmd.params[index].c_str());
+                    int limit = std::stoi(cmd.params[index],  nullptr);
                     if (limit > 0) {
                         channel->setUserLimit(static_cast<size_t>(limit));
                         appliedFlags += "+l";
