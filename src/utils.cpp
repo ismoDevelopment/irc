@@ -22,14 +22,16 @@ uint16_t convert_to_port(const std::string& str)
     if (str.empty()) {
         throw IRCException("Invalid port");
     }
+    unsigned long port = 0;
+
     for (char c : str) {
         if (c < '0' || c > '9') {
             throw IRCException("Invalid port");
         }
+        if (port <= UINT16_MAX) {
+            port = port * 10 + (c - '0');
+        }
     }
-
-    unsigned long port = std::stoul(str);
-
     if (port > UINT16_MAX) {
         throw IRCException("Port out of range");
     }
