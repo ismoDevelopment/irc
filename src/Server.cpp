@@ -156,10 +156,11 @@ void Server::process_write_buffer(Client& client)
     modify_epollout(client.get_fd(), _epollfd, false);
 }
 
-void Server::wait_incoming()
+int Server::wait_incoming()
 {
     if (_interrupted) {
-        this->stop(nullptr, 0);
+        this->stop();
+        return SIGINT + 128;
     }
 
     epoll_event events[S_MAX_EVENTS]{};
@@ -167,9 +168,10 @@ void Server::wait_incoming()
 
     if (nfds < 0) {
         if (errno == EINTR) {
-            this->stop(nullptr, 0);
+            this->stop();
+            return SIGINT + 128;
         }
-        this->stop("epoll_wait syscall failed", 1);
+        throw IRCException("epoll_wait syscall failed");
     }
 
     for (int i{}; i < nfds; i++) {
@@ -180,7 +182,7 @@ void Server::wait_incoming()
             Client new_client(client_fd, _epollfd);
 
             if (client_fd < 0) {
-                this->stop("accept() syscall failed", 1);
+                throw IRCException("accept() syscall failed");
             }
 
             char host[INET_ADDRSTRLEN];
@@ -197,16 +199,17 @@ void Server::wait_incoming()
             event.data.fd = client_fd;
             if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1) {
                 close(client_fd);
-                this->stop("epoll_ctl() syscall failed", 1);
+                throw IRCException("epoll_ctl() syscall failed");
             }
             add_client(new_client);
             continue;
         }
         if (((events[i].events & EPOLLHUP) != 0) || ((events[i].events & EPOLLERR) != 0)) {
             std::cout << "[" << events[i].data.fd << "] closing socket" << '\n';
-            epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
-            erase_client(events[i].data.fd);
-            continue;
+            if (epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr) != 0)
+            {
+                throw IRCException("epoll_ctl() syscall failed");
+            }
         }
 
         auto client_it = _clients_by_fd.find(events[i].data.fd);
@@ -230,7 +233,10 @@ void Server::wait_incoming()
             if (len == 0) {
                 std::cout << "[" << events[i].data.fd << "] shut down" << '\n';
 
-                epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                if (epoll_ctl(_epollfd, EPOLL_CTL_DEL, events[i].data.fd, nullptr) != 0)
+                {
+                    throw IRCException("epoll_ctl() syscall failed");
+                }
                 erase_client(events[i].data.fd);
                 continue;
             }
@@ -246,6 +252,7 @@ void Server::wait_incoming()
             process_write_buffer(client);
         }
     }
+    return 0;
 }
 
 void Server::add_client(Client& client)
@@ -275,14 +282,14 @@ void Server::erase_client(int fd)
     close(fd);
 }
 
-void Server::start()
+int Server::start()
 {
     _socketfd = socket(AF_INET, SOCK_STREAM, 0);
     if (_socketfd < 0) {
-        this->stop("socket() syscall failed", 1);
+        throw IRCException("socket() syscall failed");
     }
     if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0) {
-        this->stop("Failed to set socket option", 1);
+        throw IRCException("Failed to set socket option");
     }
 
     sockaddr_in serverAddr{};
@@ -290,16 +297,16 @@ void Server::start()
     serverAddr.sin_port = _port;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     if (bind(_socketfd, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) < 0) {
-        this->stop("bind() syscall failed", 1);
+        throw IRCException("bind() syscall failed");
     }
     if (listen(_socketfd, S_MAX_PENDING) < 0) {
-        this->stop("listen() syscall failed", 1);
+        throw IRCException("listen() syscall failed");
     }
     set_nonblock(_socketfd);
     _epollfd = epoll_create1(0);
 
     if (_epollfd < 0) {
-        this->stop("Failed to create epoll", 1);
+        throw IRCException("Failed to create epoll");
     }
 
     epoll_event event{};
@@ -308,21 +315,20 @@ void Server::start()
     event.data.fd = _socketfd;
 
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, _socketfd, &event) < 0) {
-        this->stop("epoll_ctl syscall failed", 1);
+        throw IRCException("epoll_ctl syscall failed");
     }
 
-    while (true) {
-        wait_incoming();
+    int exit_code = wait_incoming();
+
+    while (exit_code == 0) {
+        exit_code = wait_incoming();
     }
+
+    return exit_code;
 }
 
-void Server::stop(const char* message, int exit_code)
+void Server::stop()
 {
-    if (errno == EINTR) {
-        errno = 0;
-    }
-    int saved_errno = errno;
-
     while (!_clients.empty()) {
         erase_client(_clients.front().get_fd());
     }
@@ -339,12 +345,5 @@ void Server::stop(const char* message, int exit_code)
         _socketfd = -1;
     }
 
-    if (message != nullptr) {
-        std::cout << message << '\n';
-    }
-    if (saved_errno > 0) {
-        std::cout << "strerror: " << std::strerror(saved_errno);
-    }
     std::cout << '\n';
-    exit(exit_code);
 }

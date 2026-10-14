@@ -483,18 +483,17 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
     std::string appliedFlags;
     std::vector<std::string> appliedParams;
 
-    for (char c : modeString) {
-
-        if (c == '+') {
+    for (char mode_char : modeString) {
+        if (mode_char == '+') {
             plus = true;
             continue;
         }
-        if (c == '-') {
+        if (mode_char == '-') {
             plus = false;
             continue;
         }
 
-        switch (c) {
+        switch (mode_char) {
             case 'i': {
                 channel->setInviteOnly(plus);
                 if (plus) {
@@ -573,7 +572,7 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
                         break;
                     }
 
-                    int limit = std::atoi(cmd.params[index].c_str());
+                    int limit = std::stoi(cmd.params[index], nullptr);
                     if (limit > 0) {
                         channel->setUserLimit(static_cast<size_t>(limit));
                         appliedFlags += "+l";
@@ -589,7 +588,7 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
             }
             default: {
                 client.write_to_client(
-                    ERR_UNKNOWNMODE(_hostname, client.get_nickname(), std::string(1, c)));
+                    ERR_UNKNOWNMODE(_hostname, client.get_nickname(), std::string(1, mode_char)));
                 break;
             }
         }

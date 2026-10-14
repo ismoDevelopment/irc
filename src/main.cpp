@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "utils.hpp"
 #include <arpa/inet.h>
+#include <cstring>
 #include <exception>
 #include <fcntl.h>
 #include <iostream>
@@ -35,12 +36,17 @@ int main(int argc, char* argv[])
             throw IRCException("Failed to setup signal handling");
         }
 
-        server->start();
+        return server->start();
     }
     catch (const std::exception& ex) {
+        int saved_errno = errno;
+
         std::cout << ex.what() << '\n';
         if (server.has_value()) {
-            server->stop(nullptr, 1);
+            server->stop();
+        }
+        if (saved_errno > 0) {
+            std::cout << "strerror: " << std::strerror(saved_errno);
         }
         return 1;
     }

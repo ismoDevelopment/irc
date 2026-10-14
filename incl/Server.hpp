@@ -30,7 +30,7 @@ class Server {
     std::map<std::string, Client*> _clients_by_nickname;
     std::map<std::string, Channel*> _channels_by_name;
     std::map<std::string, CommandHandler> _commands_map;
-    void wait_incoming();
+    int wait_incoming();
     void process_read_buffer(Client& client);
     void process_write_buffer(Client& client);
     static bool _interrupted;
@@ -52,8 +52,8 @@ class Server {
 
     [[nodiscard]] std::string get_hostname() const;
     static bool needs_register(const std::string& command);
-    void start();
-    void stop(const char* message, int exit_code);
+    int start();
+    void stop();
     void add_client(Client& client);
     void erase_client(int fd);
     void checkRegistration(Client& client);
