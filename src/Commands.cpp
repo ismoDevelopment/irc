@@ -65,9 +65,9 @@ void Server::handleNick(Client& client, const ParsedCommand& cmd)
         std::string message = ":" + oldPrefix + " NICK " + newNick + "\r\n";
 
         client.write_to_client(message);
-        for (auto iter = _channels_by_name.begin(); iter != _channels_by_name.end(); ++iter) {
-            if (iter->second->hasMember(&client)) {
-                iter->second->broadcastMessage(message, &client);
+        for (const auto& entry : _channels_by_name) {
+            if (entry.second->hasMember(&client)) {
+                entry.second->broadcastMessage(message, &client);
             }
         }
     }
@@ -664,8 +664,8 @@ void Server::handleQuit(Client& client, const ParsedCommand& cmd)
         reason = "Unknown reason";
     }
 
-    for (auto iter = _channels_by_name.begin(); iter != _channels_by_name.end(); ++iter) {
-        Channel* channel = iter->second;
+    for (const auto& entry : _channels_by_name) {
+        Channel* channel = entry.second;
         if (channel->hasMember(&client)) {
             channel->broadcastMessage(":" + client.get_prefix() + " QUIT :" + reason + "\r\n",
                                       &client);
