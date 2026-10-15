@@ -566,13 +566,13 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
                         break;
                     }
 
-                    int limit = std::stoi(cmd.params[index], nullptr);
-                    if (limit > 0) {
-                        channel->setUserLimit(static_cast<size_t>(limit));
+                    const std::string& limitStr = cmd.params[index++];
+                    size_t limit = 0;
+                    if (parse_user_limit(limitStr, limit)) {
+                        channel->setUserLimit(limit);
                         appliedFlags += "+l";
-                        appliedParams.push_back(cmd.params[index]);
+                        appliedParams.push_back(limitStr);
                     }
-                    index++;
                 }
                 else {
                     channel->removeUserLimit();

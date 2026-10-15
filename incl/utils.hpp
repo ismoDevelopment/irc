@@ -18,6 +18,7 @@ class IRCException : public std::exception {
 };
 
 uint16_t convert_to_port(const std::string& str);
+bool parse_user_limit(const std::string& str, size_t& limit);
 bool set_nonblock(int fd);
 std::string to_IRClower(std::string str);
 std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,

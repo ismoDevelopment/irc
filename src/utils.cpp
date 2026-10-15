@@ -38,6 +38,29 @@ uint16_t convert_to_port(const std::string& str)
     return htons(static_cast<uint16_t>(port));
 }
 
+bool parse_user_limit(const std::string& str, size_t& limit)
+{
+    if (str.empty()) {
+        return false;
+    }
+    size_t value = 0;
+
+    for (char c : str) {
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        value = value * 10 + (c - '0');
+        if (value > INT32_MAX) {
+            return false;
+        }
+    }
+    if (value == 0) {
+        return false;
+    }
+    limit = value;
+    return true;
+}
+
 bool set_nonblock(int fd)
 {
     return fcntl(fd, F_SETFL, O_NONBLOCK) >= 0;
