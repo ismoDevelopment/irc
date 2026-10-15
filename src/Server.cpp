@@ -19,7 +19,7 @@
 #include <arpa/inet.h>
 #include <utility>
 
-bool Server::_interrupted = false;
+volatile std::sig_atomic_t Server::_interrupted = 0;
 
 Server::Server(uint16_t port, std::string password)
     : _epollfd(-1), _socketfd(-1), _port(port), _password(std::move(password)), _hostname("ft_irc")
@@ -47,9 +47,7 @@ std::string Server::get_hostname() const
 
 void Server::sigint_handler(int signum)
 {
-    if (signum == SIGINT || signum == SIGTERM) {
-        _interrupted = true;
-    }
+    _interrupted = signum;
 }
 
 static ParsedCommand parseLine(const std::string& line)
@@ -160,16 +158,15 @@ int Server::wait_incoming()
 {
     if (_interrupted) {
         this->stop();
-        return SIGINT + 128;
+        return 128 + _interrupted;
     }
 
     epoll_event events[S_MAX_EVENTS]{};
-    int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, -1);
+    int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, S_WAIT_TIMEOUT_MS);
 
     if (nfds < 0) {
         if (errno == EINTR) {
-            this->stop();
-            return SIGINT + 128;
+            return 0;
         }
         throw IRCException("epoll_wait syscall failed");
     }

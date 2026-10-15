@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include "ParsedCommand.hpp"
 #include <cstddef>
+#include <csignal>
 #include <cstdint>
 #include <fcntl.h>
 #include <list>
@@ -33,10 +34,11 @@ class Server {
     int wait_incoming();
     void process_read_buffer(Client& client);
     void process_write_buffer(Client& client);
-    static bool _interrupted;
+    static volatile std::sig_atomic_t _interrupted;
 
     static constexpr int S_MAX_PENDING = 64;
     static constexpr int S_MAX_EVENTS = 10;
+    static constexpr int S_WAIT_TIMEOUT_MS = 1000;
     static constexpr size_t MAX_NICK_SIZE = 30;
     static constexpr size_t MAX_USERNAME_SIZE = 18;
     static constexpr size_t MAX_CHANNEL_NAME_SIZE = 50;

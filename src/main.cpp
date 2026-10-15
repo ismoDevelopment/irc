@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
         sigpipe_act.sa_handler = SIG_IGN;
 
         if (sigaction(SIGINT, &sigact, nullptr) < 0 || sigaction(SIGTERM, &sigact, nullptr) < 0 ||
+            sigaction(SIGHUP, &sigact, nullptr) < 0 || sigaction(SIGQUIT, &sigact, nullptr) < 0 ||
             sigaction(SIGPIPE, &sigpipe_act, nullptr) < 0) {
             throw IRCException("Failed to setup signal handling");
         }
