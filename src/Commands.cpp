@@ -649,12 +649,9 @@ void Server::handleQuit(Client& client, const ParsedCommand& cmd)
         return;
     }
 
-    std::string reason;
-    if (!cmd.params.empty()) {
+    std::string reason = "Client quit";
+    if (!cmd.params.empty() && !cmd.params[0].empty()) {
         reason = cmd.params[0];
-    }
-    else {
-        reason = "Unknown reason";
     }
 
     for (const auto& entry : _channels_by_name) {
@@ -667,6 +664,9 @@ void Server::handleQuit(Client& client, const ParsedCommand& cmd)
 
     handleCleanup(client);
     client.set_quit();
+    if (cmd.command == "QUIT") {
+        shutdown(client.get_fd(), SHUT_RDWR);
+    }
 }
 
 void Server::handlePing(Client& client, const ParsedCommand& cmd)

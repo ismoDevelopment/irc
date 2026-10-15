@@ -115,9 +115,12 @@ void Server::process_read_buffer(Client& client)
 
         read_buffer.erase(0, delim_index + 2);
         dispatch(client, command);
+        if (client.has_quit()) {
+            break;
+        }
         delim_index = read_buffer.find("\r\n");
     }
-    if (client.has_id_without_password()) {
+    if (client.has_id_without_password() && !client.has_quit()) {
         client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
     }
     if (read_buffer.size() > MAX_MESSAGE_SIZE) {
