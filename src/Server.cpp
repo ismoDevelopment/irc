@@ -72,6 +72,11 @@ static ParsedCommand parseLine(const std::string& line)
         return cmd;
     }
     cmd.command = tokens[0];
+    for (char& c : cmd.command) {
+        if (c >= 'a' && c <= 'z') {
+            c = static_cast<char>(c - 'a' + 'A');
+        }
+    }
     for (size_t i = 1; i < tokens.size(); i++) {
         cmd.params.push_back(tokens[i]);
     }
