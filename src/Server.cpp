@@ -166,7 +166,7 @@ void Server::process_write_buffer(Client& client)
 
 int Server::wait_incoming()
 {
-    if (_interrupted) {
+    if (_interrupted != 0) {
         this->stop();
         return 128 + _interrupted;
     }
