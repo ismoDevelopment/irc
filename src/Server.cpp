@@ -233,10 +233,9 @@ int Server::wait_incoming()
             char received[READ_BUFFER_SIZE]{};
             ssize_t len = recv(events[i].data.fd, &received, READ_BUFFER_SIZE, 0);
 
-            while (len > 0) {
+            if (len > 0) {
                 client.add_read_buffer(std::string(received, len));
                 process_read_buffer(client);
-                len = recv(events[i].data.fd, &received, READ_BUFFER_SIZE, 0);
             }
             if (len == 0) {
                 std::cout << "[" << events[i].data.fd << "] shut down" << '\n';
