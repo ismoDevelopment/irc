@@ -18,9 +18,6 @@ void Server::checkRegistration(Client& client)
                                " :Welcome to the IRC server!\r\n");
         client.setWelcomed();
     }
-    else if (client.has_id_without_password()) {
-        client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
-    }
 }
 
 void Server::handleNick(Client& client, const ParsedCommand& cmd)
@@ -86,13 +83,10 @@ void Server::handlePass(Client& client, const ParsedCommand& cmd)
     }
 
     if (cmd.params[0] != _password) {
-        client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
         return;
     }
 
     client.set_password();
-    checkRegistration(client);
-    ;
 }
 
 void Server::handleUser(Client& client, const ParsedCommand& cmd)

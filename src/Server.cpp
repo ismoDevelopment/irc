@@ -117,6 +117,9 @@ void Server::process_read_buffer(Client& client)
         dispatch(client, command);
         delim_index = read_buffer.find("\r\n");
     }
+    if (client.has_id_without_password()) {
+        client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
+    }
     if (read_buffer.size() > MAX_MESSAGE_SIZE) {
         bool cr_found = (read_buffer.back() == '\r');
         read_buffer.resize(MAX_MESSAGE_SIZE);
@@ -152,6 +155,10 @@ void Server::process_write_buffer(Client& client)
     }
     write_buffer.clear();
     modify_epollout(client.get_fd(), _epollfd, false);
+    if (client.has_id_without_password()) {
+        std::cout << "[" << client.get_fd() << "] no password -- drop client after flush" << '\n';
+        erase_client(client.get_fd());
+    }
 }
 
 int Server::wait_incoming()
