@@ -88,6 +88,16 @@ std::string to_IRClower(std::string str)
     return str;
 }
 
+std::string to_upper(std::string str)
+{
+    for (char& c : str) {
+        if (c >= 'a' && c <= 'z') {
+            c = static_cast<char>(c - 'a' + 'A');
+        }
+    }
+    return str;
+}
+
 std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,
                               size_t max_size)
 {

@@ -21,6 +21,7 @@ uint16_t convert_to_port(const std::string& str);
 bool parse_user_limit(const std::string& str, size_t& limit);
 bool set_nonblock(int fd);
 std::string to_IRClower(std::string str);
+std::string to_upper(std::string str);
 std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,
                               size_t max_size);
 void modify_epollout(int fd, int epoll_fd, bool active);
