@@ -9,6 +9,8 @@
 
 class Client {
    private:
+    static constexpr size_t MAX_WRITE_BUFFER_SIZE = size_t{256} * 1024;
+
     int _fd;
     int _epoll_fd;
     bool _hasNick;

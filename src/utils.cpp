@@ -1,10 +1,14 @@
 #include "utils.hpp"
 #include <arpa/inet.h>
+#include <cerrno>
 #include <cstdint>
+#include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 
 IRCException::IRCException(const char* msg) : _message(msg) {}
 
@@ -18,25 +22,48 @@ uint16_t convert_to_port(const std::string& str)
     if (str.empty()) {
         throw IRCException("Invalid port");
     }
+    unsigned long port = 0;
+
     for (char c : str) {
         if (c < '0' || c > '9') {
             throw IRCException("Invalid port");
         }
+        if (port <= UINT16_MAX) {
+            port = port * 10 + (c - '0');
+        }
     }
-
-    unsigned long port = std::stoul(str);
-
     if (port > UINT16_MAX) {
         throw IRCException("Port out of range");
     }
     return htons(static_cast<uint16_t>(port));
 }
 
-void set_nonblock(int fd)
+bool parse_user_limit(const std::string& str, size_t& limit)
 {
-    if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-        throw IRCException("fcntl() syscall failed");
+    if (str.empty()) {
+        return false;
     }
+    size_t value = 0;
+
+    for (char c : str) {
+        if (c < '0' || c > '9') {
+            return false;
+        }
+        value = value * 10 + (c - '0');
+        if (value > INT32_MAX) {
+            return false;
+        }
+    }
+    if (value == 0) {
+        return false;
+    }
+    limit = value;
+    return true;
+}
+
+bool set_nonblock(int fd)
+{
+    return fcntl(fd, F_SETFL, O_NONBLOCK) >= 0;
 }
 
 std::string to_IRClower(std::string str)
@@ -56,6 +83,16 @@ std::string to_IRClower(std::string str)
                 if (c >= 'A' && c <= 'Z') {
                     c += 'a' - 'A';
                 }
+        }
+    }
+    return str;
+}
+
+std::string to_upper(std::string str)
+{
+    for (char& c : str) {
+        if (c >= 'a' && c <= 'z') {
+            c = static_cast<char>(c - 'a' + 'A');
         }
     }
     return str;
@@ -90,6 +127,9 @@ void modify_epollout(int fd, int epoll_fd, bool active)
     }
     event.data.fd = fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) < 0) {
-        throw IRCException("epoll_ctl() syscall failed");
+        int err = errno;
+        std::cout << "[" << fd << "] epoll_ctl() MOD failed: " << std::strerror(err)
+                  << " -- drop client now" << '\n';
+        shutdown(fd, SHUT_RDWR);
     }
 }

@@ -18,9 +18,6 @@ void Server::checkRegistration(Client& client)
                                " :Welcome to the IRC server!\r\n");
         client.setWelcomed();
     }
-    else if (client.has_id_without_password()) {
-        client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
-    }
 }
 
 void Server::handleNick(Client& client, const ParsedCommand& cmd)
@@ -86,13 +83,10 @@ void Server::handlePass(Client& client, const ParsedCommand& cmd)
     }
 
     if (cmd.params[0] != _password) {
-        client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
         return;
     }
 
     client.set_password();
-    checkRegistration(client);
-    ;
 }
 
 void Server::handleUser(Client& client, const ParsedCommand& cmd)
@@ -572,13 +566,13 @@ void Server::handleModeChannel(Client& client, const ParsedCommand& cmd)
                         break;
                     }
 
-                    int limit = std::stoi(cmd.params[index], nullptr);
-                    if (limit > 0) {
-                        channel->setUserLimit(static_cast<size_t>(limit));
+                    const std::string& limitStr = cmd.params[index++];
+                    size_t limit = 0;
+                    if (parse_user_limit(limitStr, limit)) {
+                        channel->setUserLimit(limit);
                         appliedFlags += "+l";
-                        appliedParams.push_back(cmd.params[index]);
+                        appliedParams.push_back(limitStr);
                     }
-                    index++;
                 }
                 else {
                     channel->removeUserLimit();
@@ -655,12 +649,9 @@ void Server::handleQuit(Client& client, const ParsedCommand& cmd)
         return;
     }
 
-    std::string reason;
-    if (!cmd.params.empty()) {
+    std::string reason = "Client quit";
+    if (!cmd.params.empty() && !cmd.params[0].empty()) {
         reason = cmd.params[0];
-    }
-    else {
-        reason = "Unknown reason";
     }
 
     for (const auto& entry : _channels_by_name) {
@@ -673,6 +664,9 @@ void Server::handleQuit(Client& client, const ParsedCommand& cmd)
 
     handleCleanup(client);
     client.set_quit();
+    if (cmd.command == "QUIT") {
+        shutdown(client.get_fd(), SHUT_RDWR);
+    }
 }
 
 void Server::handlePing(Client& client, const ParsedCommand& cmd)
