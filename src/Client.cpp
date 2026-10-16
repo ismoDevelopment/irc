@@ -8,16 +8,18 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-Client::Client(int clientFd, int epollFd) : _fd(clientFd), _epollFd(epollFd)
+Client::Client(int clientFd, int epollFd)
+    : _fd(clientFd),
+      _epollFd(epollFd),
+      _hasNick(false),
+      _hasUser(false),
+      _hasPassword(false),
+      _hasQuit(false),
+      _welcomeSent(false),
+      _host("0.0.0.0"),
+      _nickname("*"),
+      _username("*")
 {
-    _hasNick = false;
-    _hasUser = false;
-    _hasPassword = false;
-    _hasQuit = false;
-    _welcomeSent = false;
-    _nickname = "*";
-    _username = "*";
-    _host = "0.0.0.0";
 }
 
 std::string Client::get_nickname() const
