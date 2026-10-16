@@ -31,6 +31,7 @@ class Server {
     std::map<std::string, Client*> _clientsByNickname;
     std::map<std::string, Channel*> _channelsByName;
     std::map<std::string, CommandHandler> _commandsMap;
+    void accept_incoming();
     int wait_incoming();
     void process_read_buffer(Client& client);
     void process_write_buffer(Client& client);

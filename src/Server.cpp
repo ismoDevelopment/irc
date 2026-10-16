@@ -164,6 +164,49 @@ void Server::process_write_buffer(Client& client)
     }
 }
 
+void Server::accept_incoming()
+{
+    sockaddr_in peerAddr{};
+    socklen_t peerLen = sizeof(peerAddr);
+    int clientFd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
+
+    if (clientFd < 0) {
+        int err = errno;
+        if (err != EAGAIN && err != EWOULDBLOCK) {
+            std::cout << "accept() failed: " << std::strerror(err) << '\n';
+        }
+        return;
+    }
+    Client newClient(clientFd, _epollfd);
+
+    char host[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
+        newClient.set_host(host);
+    }
+    std::cout << "[" << clientFd << "] accepted socket: " << host << '\n';
+
+    if (!set_nonblock(clientFd)) {
+        int err = errno;
+        std::cout << "[" << clientFd << "] fcntl() failed: " << std::strerror(err)
+                    << " -- drop client now" << '\n';
+        close(clientFd);
+        return;
+    }
+
+    epoll_event event{};
+
+    event.events = EPOLLIN;
+    event.data.fd = clientFd;
+    if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, clientFd, &event) == -1) {
+        int err = errno;
+        std::cout << "[" << clientFd << "] epoll_ctl() ADD failed: " << std::strerror(err)
+                    << " -- drop client now" << '\n';
+        close(clientFd);
+        return;
+    }
+    add_client(newClient);
+}
+
 int Server::wait_incoming()
 {
     if (_interrupted != 0) {
@@ -183,45 +226,7 @@ int Server::wait_incoming()
 
     for (int i{}; i < nfds; i++) {
         if (events[i].data.fd == _socketfd) {
-            sockaddr_in peerAddr{};
-            socklen_t peerLen = sizeof(peerAddr);
-            int clientFd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
-
-            if (clientFd < 0) {
-                int err = errno;
-                if (err != EAGAIN && err != EWOULDBLOCK) {
-                    std::cout << "accept() failed: " << std::strerror(err) << '\n';
-                }
-                continue;
-            }
-            Client newClient(clientFd, _epollfd);
-
-            char host[INET_ADDRSTRLEN];
-            if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
-                newClient.set_host(host);
-            }
-            std::cout << "[" << clientFd << "] accepted socket: " << host << '\n';
-
-            if (!set_nonblock(clientFd)) {
-                int err = errno;
-                std::cout << "[" << clientFd << "] fcntl() failed: " << std::strerror(err)
-                          << " -- drop client now" << '\n';
-                close(clientFd);
-                continue;
-            }
-
-            epoll_event event{};
-
-            event.events = EPOLLIN;
-            event.data.fd = clientFd;
-            if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, clientFd, &event) == -1) {
-                int err = errno;
-                std::cout << "[" << clientFd << "] epoll_ctl() ADD failed: " << std::strerror(err)
-                          << " -- drop client now" << '\n';
-                close(clientFd);
-                continue;
-            }
-            add_client(newClient);
+            accept_incoming();
             continue;
         }
         if (((events[i].events & EPOLLHUP) != 0) || ((events[i].events & EPOLLERR) != 0)) {
