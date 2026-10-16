@@ -16,7 +16,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <arpa/inet.h>
+#include <arpa/inet.h> 
 #include <utility>
 
 volatile std::sig_atomic_t Server::_interrupted = 0;
@@ -24,20 +24,20 @@ volatile std::sig_atomic_t Server::_interrupted = 0;
 Server::Server(uint16_t port, std::string password)
     : _epollfd(-1), _socketfd(-1), _port(port), _password(std::move(password)), _hostname("ft_irc")
 {
-    _reuse_addr_value = 1;
-    _commands_map["NICK"] = &Server::handleNick;
-    _commands_map["PASS"] = &Server::handlePass;
-    _commands_map["PRIVMSG"] = &Server::handlePrivmsg;
-    _commands_map["USER"] = &Server::handleUser;
-    _commands_map["NOTICE"] = &Server::handleNotice;
-    _commands_map["JOIN"] = &Server::handleJoin;
-    _commands_map["PART"] = &Server::handlePart;
-    _commands_map["TOPIC"] = &Server::handleTopic;
-    _commands_map["INVITE"] = &Server::handleInvite;
-    _commands_map["KICK"] = &Server::handleKick;
-    _commands_map["MODE"] = &Server::handleMode;
-    _commands_map["PING"] = &Server::handlePing;
-    _commands_map["QUIT"] = &Server::handleQuit;
+    _reuseAddrValue = 1;
+    _commandsMap["NICK"] = &Server::handle_nick;
+    _commandsMap["PASS"] = &Server::handle_pass;
+    _commandsMap["PRIVMSG"] = &Server::handle_privmsg;
+    _commandsMap["USER"] = &Server::handle_user;
+    _commandsMap["NOTICE"] = &Server::handle_notice;
+    _commandsMap["JOIN"] = &Server::handle_join;
+    _commandsMap["PART"] = &Server::handle_part;
+    _commandsMap["TOPIC"] = &Server::handle_topic;
+    _commandsMap["INVITE"] = &Server::handle_invite;
+    _commandsMap["KICK"] = &Server::handle_kick;
+    _commandsMap["MODE"] = &Server::handle_mode;
+    _commandsMap["PING"] = &Server::handle_ping;
+    _commandsMap["QUIT"] = &Server::handle_quit;
 }
 
 std::string Server::get_hostname() const
@@ -50,9 +50,9 @@ void Server::sigint_handler(int signum)
     _interrupted = signum;
 }
 
-static ParsedCommand parseLine(const std::string& line)
+static ParsedCommand parse_line(const std::string& line)
 {
-    ParsedCommand cmd;
+    ParsedCommand cmd{};
     std::istringstream iss(line);
     std::string token;
     std::vector<std::string> tokens;
@@ -86,9 +86,9 @@ bool Server::needs_register(const std::string& command)
 
 void Server::dispatch(Client& client, const ParsedCommand& cmd)
 {
-    auto cmd_it = _commands_map.find(cmd.command);
+    auto cmdIt = _commandsMap.find(cmd.command);
 
-    if (cmd_it == end(_commands_map)) {
+    if (cmdIt == end(_commandsMap)) {
         client.write_to_client(":" + _hostname + " 421 " + client.get_nickname() + " " +
                                cmd.command + " :Unknown command\r\n");
     }
@@ -96,51 +96,51 @@ void Server::dispatch(Client& client, const ParsedCommand& cmd)
         client.write_to_client(ERR_NOTREGISTERED(_hostname, client.get_nickname()));
     }
     else {
-        (this->*cmd_it->second)(client, cmd);
+        (this->*cmdIt->second)(client, cmd);
     }
-    checkRegistration(client);
+    check_registration(client);
 }
 
 void Server::process_read_buffer(Client& client)
 {
-    std::string& read_buffer = client.get_read_buffer();
-    size_t delim_index = read_buffer.find("\r\n");
+    std::string& readBuffer = client.get_read_buffer();
+    size_t delimIndex = readBuffer.find("\r\n");
 
-    while (delim_index != std::string::npos) {
+    while (delimIndex != std::string::npos) {
         std::string message =
-            read_buffer.substr(0, std::min<size_t>(delim_index, MAX_MESSAGE_SIZE));
-        ParsedCommand command = parseLine(message);
+            readBuffer.substr(0, std::min<size_t>(delimIndex, MAX_MESSAGE_SIZE));
+        ParsedCommand command = parse_line(message);
 
         std::cout << "[" << client.get_fd() << "] " << "message: " << message << '\n';
 
-        read_buffer.erase(0, delim_index + 2);
+        readBuffer.erase(0, delimIndex + 2);
         dispatch(client, command);
         if (client.has_quit()) {
             break;
         }
-        delim_index = read_buffer.find("\r\n");
+        delimIndex = readBuffer.find("\r\n");
     }
     if (client.has_id_without_password() && !client.has_quit()) {
         client.write_to_client(ERR_PASSWDMISMATCH(_hostname, client.get_nickname()));
     }
-    if (read_buffer.size() > MAX_MESSAGE_SIZE) {
-        bool cr_found = (read_buffer.back() == '\r');
-        read_buffer.resize(MAX_MESSAGE_SIZE);
-        if (cr_found) {
-            read_buffer.push_back('\r');
+    if (readBuffer.size() > MAX_MESSAGE_SIZE) {
+        bool crFound = (readBuffer.back() == '\r');
+        readBuffer.resize(MAX_MESSAGE_SIZE);
+        if (crFound) {
+            readBuffer.push_back('\r');
         }
     }
 }
 
 void Server::process_write_buffer(Client& client)
 {
-    std::string& write_buffer = client.get_write_buffer();
+    std::string& writeBuffer = client.get_write_buffer();
 
-    if (write_buffer.empty()) {
+    if (writeBuffer.empty()) {
         return;
     }
 
-    ssize_t len = send(client.get_fd(), write_buffer.c_str(), write_buffer.size(), 0);
+    ssize_t len = send(client.get_fd(), writeBuffer.c_str(), writeBuffer.size(), 0);
 
     if (len < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -152,16 +152,59 @@ void Server::process_write_buffer(Client& client)
         erase_client(client.get_fd());
         return;
     }
-    if (len != static_cast<ssize_t>(write_buffer.size())) {
-        write_buffer.erase(0, len);
+    if (len != static_cast<ssize_t>(writeBuffer.size())) {
+        writeBuffer.erase(0, len);
         return;
     }
-    write_buffer.clear();
+    writeBuffer.clear();
     modify_epollout(client.get_fd(), _epollfd, false);
     if (client.has_id_without_password()) {
         std::cout << "[" << client.get_fd() << "] no password -- drop client after flush" << '\n';
         erase_client(client.get_fd());
     }
+}
+
+void Server::accept_incoming()
+{
+    sockaddr_in peerAddr{};
+    socklen_t peerLen = sizeof(peerAddr);
+    int clientFd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
+
+    if (clientFd < 0) {
+        int err = errno;
+        if (err != EAGAIN && err != EWOULDBLOCK) {
+            std::cout << "accept() failed: " << std::strerror(err) << '\n';
+        }
+        return;
+    }
+    Client newClient(clientFd, _epollfd);
+
+    char host[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
+        newClient.set_host(host);
+    }
+    std::cout << "[" << clientFd << "] accepted socket: " << host << '\n';
+
+    if (!set_nonblock(clientFd)) {
+        int err = errno;
+        std::cout << "[" << clientFd << "] fcntl() failed: " << std::strerror(err)
+                    << " -- drop client now" << '\n';
+        close(clientFd);
+        return;
+    }
+
+    epoll_event event{};
+
+    event.events = EPOLLIN;
+    event.data.fd = clientFd;
+    if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, clientFd, &event) == -1) {
+        int err = errno;
+        std::cout << "[" << clientFd << "] epoll_ctl() ADD failed: " << std::strerror(err)
+                    << " -- drop client now" << '\n';
+        close(clientFd);
+        return;
+    }
+    add_client(newClient);
 }
 
 int Server::wait_incoming()
@@ -183,45 +226,7 @@ int Server::wait_incoming()
 
     for (int i{}; i < nfds; i++) {
         if (events[i].data.fd == _socketfd) {
-            sockaddr_in peerAddr{};
-            socklen_t peerLen = sizeof(peerAddr);
-            int client_fd = accept(_socketfd, reinterpret_cast<sockaddr*>(&peerAddr), &peerLen);
-
-            if (client_fd < 0) {
-                int err = errno;
-                if (err != EAGAIN && err != EWOULDBLOCK) {
-                    std::cout << "accept() failed: " << std::strerror(err) << '\n';
-                }
-                continue;
-            }
-            Client new_client(client_fd, _epollfd);
-
-            char host[INET_ADDRSTRLEN];
-            if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
-                new_client.set_host(host);
-            }
-            std::cout << "[" << client_fd << "] accepted socket: " << host << '\n';
-
-            if (!set_nonblock(client_fd)) {
-                int err = errno;
-                std::cout << "[" << client_fd << "] fcntl() failed: " << std::strerror(err)
-                          << " -- drop client now" << '\n';
-                close(client_fd);
-                continue;
-            }
-
-            epoll_event event{};
-
-            event.events = EPOLLIN;
-            event.data.fd = client_fd;
-            if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1) {
-                int err = errno;
-                std::cout << "[" << client_fd << "] epoll_ctl() ADD failed: " << std::strerror(err)
-                          << " -- drop client now" << '\n';
-                close(client_fd);
-                continue;
-            }
-            add_client(new_client);
+            accept_incoming();
             continue;
         }
         if (((events[i].events & EPOLLHUP) != 0) || ((events[i].events & EPOLLERR) != 0)) {
@@ -230,14 +235,14 @@ int Server::wait_incoming()
             continue;
         }
 
-        auto client_it = _clients_by_fd.find(events[i].data.fd);
+        auto clientIt = _clientsByFd.find(events[i].data.fd);
 
-        if (client_it == end(_clients_by_fd)) {
+        if (clientIt == end(_clientsByFd)) {
             std::cout << "[" << events[i].data.fd << "] unable to find client in map" << '\n';
             close(events[i].data.fd);
             continue;
         }
-        Client& client = *client_it->second;
+        Client& client = *clientIt->second;
 
         if ((events[i].events & EPOLLIN) != 0) {
             char received[READ_BUFFER_SIZE]{};
@@ -269,26 +274,26 @@ int Server::wait_incoming()
 
 void Server::add_client(Client& client)
 {
-    auto client_it = _clients.insert(end(_clients), client);
+    auto clientIt = _clients.insert(end(_clients), client);
 
-    _clients_by_fd.insert({client.get_fd(), client_it});
+    _clientsByFd.insert({client.get_fd(), clientIt});
 }
 
 void Server::erase_client(int fd)
 {
-    auto map_it = _clients_by_fd.find(fd);
+    auto mapIt = _clientsByFd.find(fd);
 
-    if (map_it == end(_clients_by_fd)) {
+    if (mapIt == end(_clientsByFd)) {
         return;
     }
 
-    Client& client = *map_it->second;
+    Client& client = *mapIt->second;
     std::string nickname = client.get_nickname();
 
-    handleQuit(client, ParsedCommand());
-    _clients.erase(map_it->second);
-    _clients_by_fd.erase(fd);
-    _clients_by_nickname.erase(to_IRClower(nickname));
+    handle_quit(client, ParsedCommand{});
+    _clients.erase(mapIt->second);
+    _clientsByFd.erase(fd);
+    _clientsByNickname.erase(to_irc_lower(nickname));
     close(fd);
 }
 
@@ -298,7 +303,7 @@ int Server::start()
     if (_socketfd < 0) {
         throw IRCException("socket() syscall failed");
     }
-    if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuse_addr_value, sizeof(int)) < 0) {
+    if (setsockopt(_socketfd, SOL_SOCKET, SO_REUSEADDR, &_reuseAddrValue, sizeof(int)) < 0) {
         throw IRCException("Failed to set socket option");
     }
 
@@ -330,13 +335,13 @@ int Server::start()
         throw IRCException("epoll_ctl syscall failed");
     }
 
-    int exit_code = wait_incoming();
+    int exitCode = wait_incoming();
 
-    while (exit_code == 0) {
-        exit_code = wait_incoming();
+    while (exitCode == 0) {
+        exitCode = wait_incoming();
     }
 
-    return exit_code;
+    return exitCode;
 }
 
 void Server::stop()
@@ -345,7 +350,7 @@ void Server::stop()
         erase_client(_clients.front().get_fd());
     }
 
-    _commands_map.clear();
+    _commandsMap.clear();
 
     if (_epollfd > 0) {
         close(_epollfd);

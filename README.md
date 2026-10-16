@@ -23,6 +23,8 @@ The following commands are implemented:
 - PING: _Command that responds to clients for checking connections_
 - QUIT: _Sent by some clients to announce their departure_
 
+QUIT and PING were not directly required by the subject, however we have decided to implement them to work with modern clients.
+
 ## Requirements
 
 A C++ compiler, GNU Make, GIT and Linux

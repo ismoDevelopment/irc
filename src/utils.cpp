@@ -66,7 +66,7 @@ bool set_nonblock(int fd)
     return fcntl(fd, F_SETFL, O_NONBLOCK) >= 0;
 }
 
-std::string to_IRClower(std::string str)
+std::string to_irc_lower(std::string str)
 {
     for (char& c : str) {
         switch (c) {
@@ -98,18 +98,18 @@ std::string to_upper(std::string str)
     return str;
 }
 
-std::string sanitize_username(const std::string& username, std::string_view forbidden_chars,
-                              size_t max_size)
+std::string sanitize_username(const std::string& username, std::string_view forbiddenChars,
+                              size_t maxSize)
 {
     std::string sanitized;
 
     for (char iter : username) {
-        if (forbidden_chars.find(iter) == std::string_view::npos) {
+        if (forbiddenChars.find(iter) == std::string_view::npos) {
             sanitized.push_back(iter);
         }
     }
-    if (sanitized.size() > max_size) {
-        sanitized = sanitized.substr(0, max_size);
+    if (sanitized.size() > maxSize) {
+        sanitized = sanitized.substr(0, maxSize);
     }
     if (sanitized.empty()) {
         sanitized = "user";
@@ -117,7 +117,7 @@ std::string sanitize_username(const std::string& username, std::string_view forb
     return sanitized;
 }
 
-void modify_epollout(int fd, int epoll_fd, bool active)
+void modify_epollout(int fd, int epollFd, bool active)
 {
     epoll_event event{};
 
@@ -126,7 +126,7 @@ void modify_epollout(int fd, int epoll_fd, bool active)
         event.events |= EPOLLOUT;
     }
     event.data.fd = fd;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) < 0) {
+    if (epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &event) < 0) {
         int err = errno;
         std::cout << "[" << fd << "] epoll_ctl() MOD failed: " << std::strerror(err)
                   << " -- drop client now" << '\n';
