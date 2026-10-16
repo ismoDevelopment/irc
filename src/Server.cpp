@@ -16,15 +16,19 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
 #include <utility>
 
 volatile std::sig_atomic_t Server::_interrupted = 0;
 
 Server::Server(uint16_t port, std::string password)
-    : _epollfd(-1), _socketfd(-1), _port(port), _password(std::move(password)), _hostname("ft_irc")
+    : _epollfd(-1),
+      _socketfd(-1),
+      _reuseAddrValue(1),
+      _port(port),
+      _password(std::move(password)),
+      _hostname("ft_irc")
 {
-    _reuseAddrValue = 1;
     _commandsMap["NICK"] = &Server::handle_nick;
     _commandsMap["PASS"] = &Server::handle_pass;
     _commandsMap["PRIVMSG"] = &Server::handle_privmsg;
@@ -179,7 +183,7 @@ void Server::accept_incoming()
     }
     Client newClient(clientFd, _epollfd);
 
-    char host[INET_ADDRSTRLEN];
+    char host[INET_ADDRSTRLEN]{};
     if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
         newClient.set_host(host);
     }
