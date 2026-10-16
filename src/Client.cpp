@@ -8,12 +8,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-Client::Client(int client_fd, int epoll_fd) : _fd(client_fd), _epoll_fd(epoll_fd)
+Client::Client(int clientFd, int epollFd) : _fd(clientFd), _epollFd(epollFd)
 {
     _hasNick = false;
     _hasUser = false;
     _hasPassword = false;
-    _has_quit = false;
+    _hasQuit = false;
     _welcomeSent = false;
     _nickname = "*";
     _username = "*";
@@ -74,42 +74,42 @@ bool Client::has_id_without_password() const
 
 bool Client::has_quit() const
 {
-    return _has_quit;
+    return _hasQuit;
 }
 
 void Client::set_quit()
 {
-    _has_quit = true;
+    _hasQuit = true;
 }
 
-bool Client::hasWelcomed() const
+bool Client::has_welcomed() const
 {
     return _welcomeSent;
 }
 
-void Client::setWelcomed()
+void Client::set_welcomed()
 {
     _welcomeSent = true;
 }
 
 void Client::add_read_buffer(const std::string& received)
 {
-    _read_buffer += received;
+    _readBuffer += received;
 }
 
 void Client::write_to_client(const std::string& message)
 {
-    if (_write_buffer.size() > MAX_WRITE_BUFFER_SIZE) {
+    if (_writeBuffer.size() > MAX_WRITE_BUFFER_SIZE) {
         return;
     }
 
-    bool was_empty = _write_buffer.empty();
+    bool wasEmpty = _writeBuffer.empty();
 
-    _write_buffer += message;
-    if (was_empty) {
-        modify_epollout(_fd, _epoll_fd, true);
+    _writeBuffer += message;
+    if (wasEmpty) {
+        modify_epollout(_fd, _epollFd, true);
     }
-    if (_write_buffer.size() > MAX_WRITE_BUFFER_SIZE) {
+    if (_writeBuffer.size() > MAX_WRITE_BUFFER_SIZE) {
         std::cout << "[" << _fd << "] write buffer too large -- drop client now" << '\n';
         shutdown(_fd, SHUT_RDWR);
     }
@@ -117,10 +117,10 @@ void Client::write_to_client(const std::string& message)
 
 std::string& Client::get_read_buffer()
 {
-    return _read_buffer;
+    return _readBuffer;
 }
 
 std::string& Client::get_write_buffer()
 {
-    return _write_buffer;
+    return _writeBuffer;
 }

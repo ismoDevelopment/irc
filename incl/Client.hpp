@@ -12,26 +12,26 @@ class Client {
     static constexpr size_t MAX_WRITE_BUFFER_SIZE = size_t{256} * 1024;
 
     int _fd;
-    int _epoll_fd;
+    int _epollFd;
     bool _hasNick;
     bool _hasUser;
     bool _hasPassword;
-    bool _has_quit;
+    bool _hasQuit;
     bool _welcomeSent;
-    std::string _read_buffer;
-    std::string _write_buffer;
+    std::string _readBuffer;
+    std::string _writeBuffer;
     std::string _host;
     std::string _nickname;
     std::string _username;
 
    public:
-    Client(int client_fd, int epoll_fd);
+    Client(int clientFd, int epollFd);
     void set_nickname(std::string nickname);
     void set_username(std::string username);
     void set_host(std::string host);
     void set_password();
-    [[nodiscard]] bool hasWelcomed() const;
-    void setWelcomed();
+    [[nodiscard]] bool has_welcomed() const;
+    void set_welcomed();
     [[nodiscard]] std::string get_nickname() const;
     [[nodiscard]] std::string get_username() const;
     [[nodiscard]] std::string get_prefix() const;

@@ -13,34 +13,34 @@ Channel::Channel(std::string name)
 {
 }
 
-const std::string& Channel::getName() const
+const std::string& Channel::get_name() const
 {
     return _name;
 }
 
-void Channel::addMember(Client* client)
+void Channel::add_member(Client* client)
 {
     _members.insert(client);
 }
 
-void Channel::removeMember(Client* client)
+void Channel::remove_member(Client* client)
 {
     _members.erase(client);
     _operators.erase(client);
     _invited.erase(client);
 }
 
-bool Channel::hasMember(Client* client) const
+bool Channel::has_member(Client* client) const
 {
     return _members.find(client) != _members.end();
 }
 
-bool Channel::isEmpty() const
+bool Channel::is_empty() const
 {
     return _members.empty();
 }
 
-size_t Channel::getMemberCount() const
+size_t Channel::get_member_count() const
 {
     return _members.size();
 }
@@ -53,7 +53,7 @@ std::string Channel::get_members() const
         if (iter != _members.begin()) {
             result += ' ';
         }
-        if (isOperator(*iter)) {
+        if (is_operator(*iter)) {
             result += '@';
         }
         result += (*iter)->get_nickname();
@@ -62,7 +62,7 @@ std::string Channel::get_members() const
     return result;
 }
 
-void Channel::broadcastMessage(const std::string& message, Client* excludeClient) const
+void Channel::broadcast_message(const std::string& message, Client* excludeClient) const
 {
     for (Client* member : _members) {
         if (member != excludeClient) {
@@ -71,105 +71,105 @@ void Channel::broadcastMessage(const std::string& message, Client* excludeClient
     }
 }
 
-void Channel::addOperator(Client* client)
+void Channel::add_operator(Client* client)
 {
     _operators.insert(client);
 }
 
-void Channel::removeOperator(Client* client)
+void Channel::remove_operator(Client* client)
 {
     _operators.erase(client);
 }
 
-bool Channel::isOperator(Client* client) const
+bool Channel::is_operator(Client* client) const
 {
     return _operators.find(client) != _operators.end();
 }
 
-const std::string& Channel::getTopic() const
+const std::string& Channel::get_topic() const
 {
     return _topic;
 }
 
-void Channel::setTopic(const std::string& topic)
+void Channel::set_topic(const std::string& topic)
 {
     _topic = topic;
 }
 
-void Channel::addInvited(Client* client)
+void Channel::add_invited(Client* client)
 {
     _invited.insert(client);
 }
 
-void Channel::removeInvited(Client* client)
+void Channel::remove_invited(Client* client)
 {
     _invited.erase(client);
 }
 
-bool Channel::isInvited(Client* client) const
+bool Channel::is_invited(Client* client) const
 {
     return _invited.find(client) != _invited.end();
 }
 
-bool Channel::isInviteOnly() const
+bool Channel::is_invite_only() const
 {
     return _inviteOnly;
 }
 
-void Channel::setInviteOnly(bool inviteOnly)
+void Channel::set_invite_only(bool inviteOnly)
 {
     _inviteOnly = inviteOnly;
 }
 
-bool Channel::isTopicLocked() const
+bool Channel::is_topic_locked() const
 {
     return _topicLocked;
 }
 
-void Channel::setTopicLocked(bool topicLocked)
+void Channel::set_topic_locked(bool topicLocked)
 {
     _topicLocked = topicLocked;
 }
 
-bool Channel::hasPassword() const
+bool Channel::has_password() const
 {
     return _hasPassword;
 }
 
-const std::string& Channel::getPassword() const
+const std::string& Channel::get_password() const
 {
     return _password;
 }
 
-void Channel::setPassword(const std::string& password)
+void Channel::set_password(const std::string& password)
 {
     _password = password;
     _hasPassword = true;
 }
 
-void Channel::removePassword()
+void Channel::remove_password()
 {
     _password.clear();
     _hasPassword = false;
 }
 
-bool Channel::hasUserLimit() const
+bool Channel::has_user_limit() const
 {
     return _hasUserLimit;
 }
 
-size_t Channel::getUserLimit() const
+size_t Channel::get_user_limit() const
 {
     return _userLimit;
 }
 
-void Channel::setUserLimit(size_t limit)
+void Channel::set_user_limit(size_t limit)
 {
     _userLimit = limit;
     _hasUserLimit = true;
 }
 
-void Channel::removeUserLimit()
+void Channel::remove_user_limit()
 {
     _userLimit = 0;
     _hasUserLimit = false;
