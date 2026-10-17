@@ -6,7 +6,9 @@ _This project has been created as part of the 42 curriculum by ibenne, tda-roch,
 
 ## Description
 
-IRC (Internet Relay Chat) is a text-based chat protocol which was developed in 1988 by Jakko Oikarinen in Finland. In this project we made a server that must be able to connect with IRC clients, for example hexchat. We don't implement server to server communication
+IRC (Internet Relay Chat) is a text-based chat protocol which was developed in 1988 by Jakko Oikarinen in Finland. In this project we made a server that must be able to connect with IRC clients, for example HexChat. We don't implement server to server communication. We have decided to use epoll for our "Polling system", this system makes sure we read/write from and to the correct file descriptors and buffers messages internally.
+
+Most of our testing has been done with HexChat and Netcat
 
 The following commands are implemented:
 - NICK: _Sets the nickname required for registration_
@@ -23,7 +25,7 @@ The following commands are implemented:
 - PING: _Command that responds to clients for checking connections_
 - QUIT: _Sent by some clients to announce their departure_
 
-QUIT and PING were not directly required by the subject, however we have decided to implement them to work with modern clients.
+QUIT and PING were not directly required by the subject, however we have decided to implement them to work with modern clients. We have mostly followed modern specifications for our server, including the replies structure.
 
 ## Requirements
 
@@ -41,6 +43,10 @@ Inside the repository, run Make
 
 ` make all `
 
+Or run the valgrind rule to test with valgrind
+
+` make valgrind `
+
 Run the executable as follows with the port and password as arguments
 
 `./ircserv <PORT> <PASSWORD>`
@@ -49,3 +55,4 @@ Run the executable as follows with the port and password as arguments
 - [https://modern.ircdocs.horse/#numeric-replies](https://modern.ircdocs.horse/#numeric-replies)
 - [https://www.cs.cmu.edu/~mukesh/15-441/proj1/rfc-html/chapter4.html#c4_2_1](https://www.cs.cmu.edu/~mukesh/15-441/proj1/rfc-html/chapter4.html#c4_2_1)
 - [EPOLL LT vs ET](https://isdn4linux.org/2026/08/25/how-epoll-works-in-linux-internals-edge-triggered-vs-level-triggered-and-code-examples/)
+- [https://modern.ircdocs.horse/](https://modern.ircdocs.horse/)
