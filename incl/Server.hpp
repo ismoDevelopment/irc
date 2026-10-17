@@ -39,7 +39,6 @@ class Server {
 
     static constexpr int S_MAX_PENDING = 64;
     static constexpr int S_MAX_EVENTS = 10;
-    static constexpr int S_WAIT_TIMEOUT_MS = 1000;
     static constexpr size_t MAX_NICK_SIZE = 30;
     static constexpr size_t MAX_USERNAME_SIZE = 18;
     static constexpr size_t MAX_CHANNEL_NAME_SIZE = 50;

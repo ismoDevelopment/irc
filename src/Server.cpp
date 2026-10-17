@@ -111,8 +111,7 @@ void Server::process_read_buffer(Client& client)
     size_t delimIndex = readBuffer.find("\r\n");
 
     while (delimIndex != std::string::npos) {
-        std::string message =
-            readBuffer.substr(0, std::min<size_t>(delimIndex, MAX_MESSAGE_SIZE));
+        std::string message = readBuffer.substr(0, std::min<size_t>(delimIndex, MAX_MESSAGE_SIZE));
         ParsedCommand command = parse_line(message);
 
         std::cout << "[" << client.get_fd() << "] " << "message: " << message << '\n';
@@ -192,7 +191,7 @@ void Server::accept_incoming()
     if (!set_nonblock(clientFd)) {
         int err = errno;
         std::cout << "[" << clientFd << "] fcntl() failed: " << std::strerror(err)
-                    << " -- drop client now" << '\n';
+                  << " -- drop client now" << '\n';
         close(clientFd);
         return;
     }
@@ -204,7 +203,7 @@ void Server::accept_incoming()
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, clientFd, &event) == -1) {
         int err = errno;
         std::cout << "[" << clientFd << "] epoll_ctl() ADD failed: " << std::strerror(err)
-                    << " -- drop client now" << '\n';
+                  << " -- drop client now" << '\n';
         close(clientFd);
         return;
     }
@@ -219,7 +218,7 @@ int Server::wait_incoming()
     }
 
     epoll_event events[S_MAX_EVENTS]{};
-    int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, S_WAIT_TIMEOUT_MS);
+    int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, -1);
 
     if (nfds < 0) {
         if (errno == EINTR) {
