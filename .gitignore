@@ -8,5 +8,6 @@ ignore/
 .clang-tidy
 .clangd
 /compile_commands.json
+/tests
 # /en.subject.pdf
 # /TODO.md

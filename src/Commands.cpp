@@ -460,8 +460,9 @@ void Server::handle_mode_channel(Client& client, const ParsedCommand& cmd)
         return;
     }
 
-    if (cmd.params.size() < 2) {
-        client.write_to_client(ERR_NEEDMOREPARAMS(_hostname, client.get_nickname(), "MODE"));
+    if (cmd.params.size() < 2 || cmd.params[1].empty()) {
+        client.write_to_client(RPL_CHANNELMODEIS(_hostname, client.get_nickname(), targetChannel,
+                                                 channel->get_modes()));
         return;
     }
 

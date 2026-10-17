@@ -174,3 +174,27 @@ void Channel::remove_user_limit()
     _userLimit = 0;
     _hasUserLimit = false;
 }
+
+std::string Channel::get_modes() const
+{
+    std::string modes = "+";
+    std::string params;
+
+    if (_inviteOnly) {
+        modes += 'i';
+    }
+    if (_topicLocked) {
+        modes += 't';
+    }
+    if (_hasPassword) {
+        modes += 'k';
+        params += ' ';
+        params += _password;
+    }
+    if (_hasUserLimit) {
+        modes += 'l';
+        params += ' ';
+        params += std::to_string(_userLimit);
+    }
+    return modes + params;
+}

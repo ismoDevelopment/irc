@@ -48,6 +48,7 @@ class Channel {
     [[nodiscard]] size_t get_user_limit() const;
     void set_user_limit(size_t limit);
     void remove_user_limit();
+    [[nodiscard]] std::string get_modes() const;
 
    private:
     std::string _name;
