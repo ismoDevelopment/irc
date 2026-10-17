@@ -10,7 +10,7 @@ IRC (Internet Relay Chat) is a text-based chat protocol which was developed in 1
 
 Most of our testing has been done with HexChat and Netcat
 
-The following commands are implemented:
+#### The following commands are implemented:
 - NICK: _Sets the nickname required for registration_
 - PASS: _Server password required for registration_
 - USER: _Sets the username required for registration_
@@ -25,7 +25,7 @@ The following commands are implemented:
 - PING: _Command that responds to clients for checking connections_
 - QUIT: _Sent by some clients to announce their departure_
 
-QUIT and PING were not directly required by the subject, however we have decided to implement them to work with modern clients. We have mostly followed modern specifications for our server, including the replies structure.
+QUIT and PING were not directly required by the subject, however we have decided to implement them to work with modern clients. We have mostly followed modern specifications for our server, including the server replies.
 
 ## Requirements
 
