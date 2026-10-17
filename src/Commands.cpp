@@ -321,7 +321,7 @@ void Server::handle_topic(Client& client, const ParsedCommand& cmd)
     const std::string& newTopic = cmd.params[1];
     channel->set_topic(newTopic);
     channel->broadcast_message(
-        ":" + client.get_prefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n", NULL);
+        ":" + client.get_prefix() + " TOPIC " + channelName + " :" + newTopic + "\r\n", nullptr);
 }
 
 void Server::handle_invite(Client& client, const ParsedCommand& cmd)
@@ -415,11 +415,11 @@ void Server::handle_kick(Client& client, const ParsedCommand& cmd)
         const std::string& reason = cmd.params[2];
         channel->broadcast_message(":" + client.get_prefix() + " KICK " + channelName + " " +
                                       targetNick + " :" + reason + "\r\n",
-                                  NULL);
+                                  nullptr);
     }
     else {
         channel->broadcast_message(
-            ":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + "\r\n", NULL);
+            ":" + client.get_prefix() + " KICK " + channelName + " " + targetNick + "\r\n", nullptr);
     }
 
     channel->remove_member(targetClient);
@@ -594,7 +594,7 @@ void Server::handle_mode_channel(Client& client, const ParsedCommand& cmd)
         for (const std::string& param : appliedParams) {
             confirm += " " + param;
         }
-        channel->broadcast_message(confirm + "\r\n", NULL);
+        channel->broadcast_message(confirm + "\r\n", nullptr);
     }
 }
 
