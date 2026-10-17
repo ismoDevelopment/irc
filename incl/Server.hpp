@@ -52,7 +52,7 @@ class Server {
    public:
     Server(uint16_t port, std::string password);
 
-    [[nodiscard]] std::string get_hostname() const;
+    std::string get_hostname() const;
     static bool needs_register(const std::string& command);
     int start();
     void stop();
