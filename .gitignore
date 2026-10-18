@@ -1,13 +1,4 @@
 tmp/
-ignore/
 .vscode/
-/irc_server
 /ircserv
-*.sh
-.clang-format
-.clang-tidy
-.clangd
-/compile_commands.json
 /tests
-# /en.subject.pdf
-# /TODO.md
