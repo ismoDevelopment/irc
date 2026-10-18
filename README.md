@@ -37,8 +37,6 @@ Clone the repository with git
 
 ` git clone https://github.com/ismoDevelopment/irc.git `
 
-## Usage
-
 Inside the repository, run Make
 
 ` make all `
@@ -50,6 +48,28 @@ Or run the valgrind rule to test with valgrind
 Run the executable as follows with the port and password as arguments
 
 `./ircserv <PORT> <PASSWORD>`
+
+## Usage
+
+You can use your prefered IRC client, however keep in mind that the server has been tested with HexChat and a bit of irsii only.
+
+### To connect with HexChat:
+
+1. Make sure the IRC server is running on your machine and listening on your given port.
+2. Open HexChat, and then go to HexChat > Network List (or press `Ctrl+S`).
+3. Fill in your User Information (Nick name, Second choice, User name, Real name) at the top of the window.
+4. Click Add to create a new network entry.
+5. Type a name for the entry and press Enter
+6. With the new entry selected, click Edit..
+7. In the Servers list, select the placeholder entry (`newserver/<port>`) and click Edit.
+8. Replace it with `localhost/<port>`.
+9. Make sure the following options are unchecked:
+   - Use SSL for all the servers on this network
+   - Accept invalid SSL certificates
+10. Set the login method as the Server password /PASS option, and type in your password of choice in the password field.
+12. Click Close to save the settings.
+13. Make sure the entry is selected in the Network List, then click Connect.
+14. Once connected, join a channel by typing `/join #channelname` in the input box.
 
 ## Resources
 - [https://modern.ircdocs.horse/#numeric-replies](https://modern.ircdocs.horse/#numeric-replies)
