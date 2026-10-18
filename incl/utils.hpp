@@ -14,7 +14,7 @@ class IRCException : public std::exception {
 
    public:
     IRCException(const char* msg);
-    [[nodiscard]] const char* what() const noexcept override;
+    const char* what() const noexcept override;
 };
 
 uint16_t convert_to_port(const std::string& str);

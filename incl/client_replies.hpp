@@ -74,6 +74,9 @@
 #define RPL_UMODEIS(prefix, target, modes) \
     (":" + (prefix) + " 221 " + (target) + " " + (modes) + "\r\n")
 
+#define RPL_CHANNELMODEIS(prefix, target, channel, modes) \
+    (":" + (prefix) + " 324 " + (target) + " " + (channel) + " " + (modes) + "\r\n")
+
 #define RPL_NOTOPIC(prefix, target, channel) \
     (":" + (prefix) + " 331 " + (target) + " " + (channel) + " :No topic is set\r\n")
 

@@ -16,15 +16,19 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
 #include <utility>
 
 volatile std::sig_atomic_t Server::_interrupted = 0;
 
 Server::Server(uint16_t port, std::string password)
-    : _epollfd(-1), _socketfd(-1), _port(port), _password(std::move(password)), _hostname("ft_irc")
+    : _epollfd(-1),
+      _socketfd(-1),
+      _reuseAddrValue(1),
+      _port(port),
+      _password(std::move(password)),
+      _hostname("ft_irc")
 {
-    _reuseAddrValue = 1;
     _commandsMap["NICK"] = &Server::handle_nick;
     _commandsMap["PASS"] = &Server::handle_pass;
     _commandsMap["PRIVMSG"] = &Server::handle_privmsg;
@@ -107,8 +111,7 @@ void Server::process_read_buffer(Client& client)
     size_t delimIndex = readBuffer.find("\r\n");
 
     while (delimIndex != std::string::npos) {
-        std::string message =
-            readBuffer.substr(0, std::min<size_t>(delimIndex, MAX_MESSAGE_SIZE));
+        std::string message = readBuffer.substr(0, std::min<size_t>(delimIndex, MAX_MESSAGE_SIZE));
         ParsedCommand command = parse_line(message);
 
         std::cout << "[" << client.get_fd() << "] " << "message: " << message << '\n';
@@ -179,7 +182,7 @@ void Server::accept_incoming()
     }
     Client newClient(clientFd, _epollfd);
 
-    char host[INET_ADDRSTRLEN];
+    char host[INET_ADDRSTRLEN]{};
     if (inet_ntop(AF_INET, &peerAddr.sin_addr, host, sizeof(host)) != nullptr) {
         newClient.set_host(host);
     }
@@ -188,7 +191,7 @@ void Server::accept_incoming()
     if (!set_nonblock(clientFd)) {
         int err = errno;
         std::cout << "[" << clientFd << "] fcntl() failed: " << std::strerror(err)
-                    << " -- drop client now" << '\n';
+                  << " -- drop client now" << '\n';
         close(clientFd);
         return;
     }
@@ -200,7 +203,7 @@ void Server::accept_incoming()
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, clientFd, &event) == -1) {
         int err = errno;
         std::cout << "[" << clientFd << "] epoll_ctl() ADD failed: " << std::strerror(err)
-                    << " -- drop client now" << '\n';
+                  << " -- drop client now" << '\n';
         close(clientFd);
         return;
     }
@@ -215,7 +218,7 @@ int Server::wait_incoming()
     }
 
     epoll_event events[S_MAX_EVENTS]{};
-    int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, S_WAIT_TIMEOUT_MS);
+    int nfds = epoll_wait(_epollfd, events, S_MAX_EVENTS, -1);
 
     if (nfds < 0) {
         if (errno == EINTR) {
