@@ -4,6 +4,20 @@
 #include <string>
 
 class Channel {
+   private:
+    std::string _name;
+    std::string _topic;
+    std::set<Client*> _members;
+    std::set<Client*> _operators;
+    std::set<Client*> _invited;
+
+    bool _inviteOnly;
+    bool _topicLocked;
+    bool _hasPassword;
+    std::string _password;
+    bool _hasUserLimit;
+    size_t _userLimit;
+
    public:
     Channel(std::string name);
 
@@ -49,18 +63,4 @@ class Channel {
     void set_user_limit(size_t limit);
     void remove_user_limit();
     std::string get_modes() const;
-
-   private:
-    std::string _name;
-    std::string _topic;
-    std::set<Client*> _members;
-    std::set<Client*> _operators;
-    std::set<Client*> _invited;
-
-    bool _inviteOnly;
-    bool _topicLocked;
-    bool _hasPassword;
-    std::string _password;
-    bool _hasUserLimit;
-    size_t _userLimit;
 };

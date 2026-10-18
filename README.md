@@ -15,7 +15,7 @@ Most of our testing has been done with HexChat and Netcat
 - PASS: _Server password required for registration_
 - USER: _Sets the username required for registration_
 - PRIVMSG: _Send messages to users or channels_
-- NOTICE: _Similair to PRIVMSG, however NOTICE doesn't send automatic replies_
+- NOTICE: _Similar to PRIVMSG, however NOTICE doesn't send automatic replies_
 - JOIN: _Joins channels_
 - PART: _Leaves channels_
 - TOPIC _Sets the current "topic" for the given channel_
